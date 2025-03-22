@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
-import 'screens/customer_list_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         Locale('tr', 'TR'),
       ],
       locale: const Locale('tr', 'TR'),
-      home: const CustomerListScreen(),
+      home: const HomeScreen(),
     );
   }
 }

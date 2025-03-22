@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer.dart';
 import 'add_customer_screen.dart';
 import 'customer_detail_screen.dart';
+import 'statistics_screen.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({Key? key}) : super(key: key);
@@ -155,15 +156,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

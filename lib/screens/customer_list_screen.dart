@@ -218,4 +218,21 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
     return Colors.green[100]!;
   }
+
+  void _createDummyCustomer() async {
+    final customer = Customer(
+      name: 'Test Müşteri',
+      phone: '5551234567',
+      email: 'test@example.com',
+      registrationDate: DateTime.now(),
+      subscriptionMonths: 3,
+      paymentType: PaymentType.cash,
+      paidInstallments: 1,
+      totalInstallments: 1,
+      status: MembershipStatus.active,
+    );
+
+    await _customerService.addCustomer(customer);
+    _loadCustomers();
+  }
 }

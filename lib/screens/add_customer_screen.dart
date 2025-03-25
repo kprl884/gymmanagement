@@ -16,103 +16,68 @@ class AddCustomerScreen extends StatefulWidget {
 class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _subscriptionMonthsController = TextEditingController(text: '1');
+  final _paidInstallmentsController = TextEditingController(text: '0');
+  final _totalInstallmentsController = TextEditingController(text: '1');
 
-  DateTime _selectedDate = DateTime.now();
-  DateTime? _membershipStartDate = DateTime.now();
-  DateTime? _membershipEndDate;
-  int _membershipDuration = 1; // Ay cinsinden
-  MembershipStatus _status = MembershipStatus.active;
-
+  PaymentType _paymentType = PaymentType.cash;
   bool _isLoading = false;
   final CustomerService _customerService = CustomerService();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
-    _notesController.dispose();
+    _emailController.dispose();
+    _subscriptionMonthsController.dispose();
+    _paidInstallmentsController.dispose();
+    _totalInstallmentsController.dispose();
     super.dispose();
   }
 
-  void _updateMembershipEndDate() {
-    if (_membershipStartDate != null) {
-      setState(() {
-        _membershipEndDate = DateTime(
-          _membershipStartDate!.year,
-          _membershipStartDate!.month + _membershipDuration,
-          _membershipStartDate!.day,
-        );
-      });
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isStartDate
-          ? _membershipStartDate ?? DateTime.now()
-          : _membershipEndDate ?? DateTime.now().add(const Duration(days: 30)),
-      firstDate:
-          isStartDate ? DateTime(2020) : _membershipStartDate ?? DateTime.now(),
-      lastDate: DateTime(2030),
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _membershipStartDate = picked;
-          _updateMembershipEndDate();
-        } else {
-          _membershipEndDate = picked;
-          // Eğer bitiş tarihi manuel seçildiyse, süreyi hesapla
-          if (_membershipStartDate != null) {
-            final months = (picked.year - _membershipStartDate!.year) * 12 +
-                picked.month -
-                _membershipStartDate!.month;
-            _membershipDuration = months > 0 ? months : 1;
-          }
-        }
-      });
-    }
-  }
-
-  Future<void> _addCustomer() async {
+  Future<void> _saveCustomer() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
+        // Ödeme tipine göre taksit bilgilerini ayarla
+        int paidInstallments = 0;
+        int totalInstallments = 1;
+
+        if (_paymentType == PaymentType.installment) {
+          paidInstallments = int.parse(_paidInstallmentsController.text);
+          totalInstallments = int.parse(_totalInstallmentsController.text);
+        } else {
+          // Peşin ödemede tüm taksitler ödenmiş sayılır
+          paidInstallments = 1;
+          totalInstallments = 1;
+        }
+
         final customer = Customer(
-          id: '', // Firestore tarafından otomatik oluşturulacak
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          phone: _phoneController.text.trim(),
-          registrationDate: _selectedDate,
-          membershipStartDate: _membershipStartDate,
-          membershipEndDate: _membershipEndDate,
-          status: _status,
-          notes: _notesController.text.trim(),
+          name: _nameController.text,
+          phone: _phoneController.text,
+          email: _emailController.text,
+          registrationDate: DateTime.now(),
+          subscriptionMonths: int.parse(_subscriptionMonthsController.text),
+          paymentType: _paymentType,
+          paidInstallments: paidInstallments,
+          totalInstallments: totalInstallments,
+          status: MembershipStatus.active,
         );
 
-        final customerId = await _customerService.addCustomer(customer);
+        await _customerService.addCustomer(customer);
 
         if (!mounted) return;
 
-        if (customerId != null) {
-          ToastHelper.showSuccessToast(context, 'Müşteri başarıyla eklendi');
-          Navigator.pop(context, true); // Başarılı ekleme ile geri dön
-        } else {
-          ToastHelper.showErrorToast(
-              context, 'Müşteri eklenirken bir hata oluştu');
-        }
+        ToastHelper.showSuccessToast(context, 'Müşteri başarıyla eklendi');
+        Navigator.pop(context, true); // Başarılı olduğunu bildir
       } catch (e) {
         if (!mounted) return;
-        ToastHelper.showErrorToast(context, 'Hata: $e');
+        ToastHelper.showErrorToast(context, 'Müşteri eklenirken hata: $e');
       } finally {
         if (mounted) {
           setState(() {
@@ -138,162 +103,236 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ad Soyad',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Lütfen ad soyad giriniz';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'E-posta',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Lütfen e-posta giriniz';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Geçerli bir e-posta giriniz';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Telefon',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Üyelik Başlangıç Tarihi
-                    ListTile(
-                      title: const Text('Üyelik Başlangıç Tarihi'),
-                      subtitle: Text(
-                        _membershipStartDate != null
-                            ? DateFormat('dd/MM/yyyy')
-                                .format(_membershipStartDate!)
-                            : 'Seçilmedi',
-                      ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () => _selectDate(context, true),
-                    ),
-
-                    // Üyelik Süresi
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text('Üyelik Süresi (Ay):'),
+                    // Temel Bilgiler Kartı
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Temel Bilgiler',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Ad Soyad',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen ad soyad girin';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _phoneController,
+                              decoration: const InputDecoration(
+                                labelText: 'Telefon',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.phone),
+                              ),
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen telefon numarası girin';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _emailController,
+                              decoration: const InputDecoration(
+                                labelText: 'E-posta',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.email),
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen e-posta girin';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Geçerli bir e-posta adresi girin';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
                         ),
-                        DropdownButton<int>(
-                          value: _membershipDuration,
-                          items: List.generate(24, (index) => index + 1)
-                              .map((month) => DropdownMenuItem(
-                                    value: month,
-                                    child: Text('$month ay'),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _membershipDuration = value;
-                                _updateMembershipEndDate();
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-
-                    // Üyelik Bitiş Tarihi
-                    ListTile(
-                      title: const Text('Üyelik Bitiş Tarihi'),
-                      subtitle: Text(
-                        _membershipEndDate != null
-                            ? DateFormat('dd/MM/yyyy')
-                                .format(_membershipEndDate!)
-                            : 'Hesaplanıyor...',
                       ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () => _selectDate(context, false),
-                    ),
-
-                    // Üyelik Durumu
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text('Üyelik Durumu:'),
-                        ),
-                        DropdownButton<MembershipStatus>(
-                          value: _status,
-                          items: MembershipStatus.values
-                              .map((status) => DropdownMenuItem(
-                                    value: status,
-                                    child: Text(_getStatusText(status)),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _status = value;
-                              });
-                            }
-                          },
-                        ),
-                      ],
                     ),
 
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notlar',
-                        border: OutlineInputBorder(),
+
+                    // Abonelik Bilgileri Kartı
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Abonelik Bilgileri',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _subscriptionMonthsController,
+                              decoration: const InputDecoration(
+                                labelText: 'Abonelik Süresi (Ay)',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.calendar_month),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen abonelik süresini girin';
+                                }
+                                final months = int.tryParse(value);
+                                if (months == null || months < 1) {
+                                  return 'Geçerli bir süre girin';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Ödeme Tipi Seçimi
+                            const Text(
+                              'Ödeme Tipi',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<PaymentType>(
+                                    title: const Text('Peşin'),
+                                    value: PaymentType.cash,
+                                    groupValue: _paymentType,
+                                    onChanged: (PaymentType? value) {
+                                      setState(() {
+                                        _paymentType = value!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: RadioListTile<PaymentType>(
+                                    title: const Text('Taksitli'),
+                                    value: PaymentType.installment,
+                                    groupValue: _paymentType,
+                                    onChanged: (PaymentType? value) {
+                                      setState(() {
+                                        _paymentType = value!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Taksit Bilgileri (Sadece taksitli ödemede göster)
+                            if (_paymentType == PaymentType.installment) ...[
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _paidInstallmentsController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Ödenen Taksit',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Gerekli';
+                                        }
+                                        final paid = int.tryParse(value);
+                                        final total = int.tryParse(
+                                            _totalInstallmentsController.text);
+                                        if (paid == null ||
+                                            paid < 0 ||
+                                            (total != null && paid > total)) {
+                                          return 'Geçersiz';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _totalInstallmentsController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Toplam Taksit',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Gerekli';
+                                        }
+                                        final total = int.tryParse(value);
+                                        if (total == null || total < 1) {
+                                          return 'Geçersiz';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      maxLines: 3,
                     ),
 
                     const SizedBox(height: 24),
+
                     ElevatedButton(
-                      onPressed: _addCustomer,
+                      onPressed: _saveCustomer,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Müşteri Ekle'),
+                      child: const Text(
+                        'KAYDET',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
     );
-  }
-
-  String _getStatusText(MembershipStatus status) {
-    switch (status) {
-      case MembershipStatus.active:
-        return 'Aktif';
-      case MembershipStatus.expired:
-        return 'Süresi Dolmuş';
-      case MembershipStatus.pending:
-        return 'Beklemede';
-      case MembershipStatus.cancelled:
-        return 'İptal Edilmiş';
-      default:
-        return 'Bilinmiyor';
-    }
   }
 }

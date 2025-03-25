@@ -2,12 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum MembershipStatus { active, expired, pending, cancelled }
 
+enum PaymentType { cash, installment }
+
 class Customer {
-  final String id;
+  final String? id;
   final String name;
+  final String phone;
   final String email;
-  final String? phone;
   final DateTime registrationDate;
+  final DateTime? lastVisitDate;
+  final int subscriptionMonths; // Abonelik süresi (ay)
+  final PaymentType paymentType; // Ödeme tipi (peşin/taksitli)
+  final int paidInstallments; // Ödenen taksit sayısı
+  final int totalInstallments; // Toplam taksit sayısı
+  final bool isActive;
   final DateTime? membershipStartDate;
   final DateTime? membershipEndDate;
   final MembershipStatus status;
@@ -18,11 +26,17 @@ class Customer {
   final String? assignedTrainer;
 
   Customer({
-    required this.id,
+    this.id,
     required this.name,
+    required this.phone,
     required this.email,
-    this.phone,
     required this.registrationDate,
+    this.lastVisitDate,
+    required this.subscriptionMonths,
+    required this.paymentType,
+    required this.paidInstallments,
+    required this.totalInstallments,
+    this.isActive = true,
     this.membershipStartDate,
     this.membershipEndDate,
     required this.status,
@@ -40,9 +54,19 @@ class Customer {
     return Customer(
       id: doc.id,
       name: data['name'] ?? '',
+      phone: data['phone'] ?? '',
       email: data['email'] ?? '',
-      phone: data['phone'],
       registrationDate: (data['registrationDate'] as Timestamp).toDate(),
+      lastVisitDate: data['lastVisitDate'] != null
+          ? (data['lastVisitDate'] as Timestamp).toDate()
+          : null,
+      subscriptionMonths: data['subscriptionMonths'] ?? 1,
+      paymentType: data['paymentType'] == 'installment'
+          ? PaymentType.installment
+          : PaymentType.cash,
+      paidInstallments: data['paidInstallments'] ?? 0,
+      totalInstallments: data['totalInstallments'] ?? 1,
+      isActive: data['isActive'] ?? true,
       membershipStartDate: data['membershipStartDate'] != null
           ? (data['membershipStartDate'] as Timestamp).toDate()
           : null,
@@ -67,9 +91,17 @@ class Customer {
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
-      'email': email,
       'phone': phone,
+      'email': email,
       'registrationDate': Timestamp.fromDate(registrationDate),
+      'lastVisitDate':
+          lastVisitDate != null ? Timestamp.fromDate(lastVisitDate!) : null,
+      'subscriptionMonths': subscriptionMonths,
+      'paymentType':
+          paymentType == PaymentType.installment ? 'installment' : 'cash',
+      'paidInstallments': paidInstallments,
+      'totalInstallments': totalInstallments,
+      'isActive': isActive,
       'membershipStartDate': membershipStartDate != null
           ? Timestamp.fromDate(membershipStartDate!)
           : null,
@@ -89,8 +121,15 @@ class Customer {
   // Müşteri bilgilerini güncelleme
   Customer copyWith({
     String? name,
-    String? email,
     String? phone,
+    String? email,
+    DateTime? registrationDate,
+    DateTime? lastVisitDate,
+    int? subscriptionMonths,
+    PaymentType? paymentType,
+    int? paidInstallments,
+    int? totalInstallments,
+    bool? isActive,
     DateTime? membershipStartDate,
     DateTime? membershipEndDate,
     MembershipStatus? status,
@@ -101,11 +140,17 @@ class Customer {
     String? assignedTrainer,
   }) {
     return Customer(
-      id: this.id,
+      id: id,
       name: name ?? this.name,
-      email: email ?? this.email,
       phone: phone ?? this.phone,
-      registrationDate: this.registrationDate,
+      email: email ?? this.email,
+      registrationDate: registrationDate ?? this.registrationDate,
+      lastVisitDate: lastVisitDate ?? this.lastVisitDate,
+      subscriptionMonths: subscriptionMonths ?? this.subscriptionMonths,
+      paymentType: paymentType ?? this.paymentType,
+      paidInstallments: paidInstallments ?? this.paidInstallments,
+      totalInstallments: totalInstallments ?? this.totalInstallments,
+      isActive: isActive ?? this.isActive,
       membershipStartDate: membershipStartDate ?? this.membershipStartDate,
       membershipEndDate: membershipEndDate ?? this.membershipEndDate,
       status: status ?? this.status,

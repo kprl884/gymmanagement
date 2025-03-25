@@ -10,14 +10,12 @@ class CustomerService {
   // Tüm müşterileri getir
   Future<List<Customer>> getAllCustomers() async {
     try {
-      final snapshot =
-          await _firestore.collection('customers').orderBy('name').get();
-
+      final snapshot = await _firestore.collection('customers').get();
       return snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
     } catch (e) {
       _logService.logError(
           'CustomerService', 'Müşterileri getirme hatası: $e', null);
-      return [];
+      rethrow;
     }
   }
 
@@ -38,61 +36,53 @@ class CustomerService {
     }
   }
 
-  // Yeni müşteri ekle
-  Future<String?> addCustomer(Customer customer) async {
+  // Müşteri ekle
+  Future<void> addCustomer(Customer customer) async {
     try {
-      final docRef =
-          await _firestore.collection('customers').add(customer.toFirestore());
-
-      return docRef.id;
+      await _firestore.collection('customers').add(customer.toFirestore());
     } catch (e) {
       _logService.logError(
           'CustomerService', 'Müşteri ekleme hatası: $e', null);
-      return null;
+      rethrow;
     }
   }
 
-  // Müşteri bilgilerini güncelle
-  Future<bool> updateCustomer(Customer customer) async {
+  // Müşteri güncelle
+  Future<void> updateCustomer(Customer customer) async {
     try {
       await _firestore
           .collection('customers')
           .doc(customer.id)
           .update(customer.toFirestore());
-
-      return true;
     } catch (e) {
       _logService.logError(
           'CustomerService', 'Müşteri güncelleme hatası: $e', null);
-      return false;
+      rethrow;
     }
   }
 
   // Müşteri sil
-  Future<bool> deleteCustomer(String customerId) async {
+  Future<void> deleteCustomer(String customerId) async {
     try {
       await _firestore.collection('customers').doc(customerId).delete();
-
-      return true;
     } catch (e) {
       _logService.logError('CustomerService', 'Müşteri silme hatası: $e', null);
-      return false;
+      rethrow;
     }
   }
 
-  // Aktif üyelikleri getir
+  // Aktif müşterileri getir
   Future<List<Customer>> getActiveCustomers() async {
     try {
       final snapshot = await _firestore
           .collection('customers')
-          .where('status', isEqualTo: 'active')
+          .where('isActive', isEqualTo: true)
           .get();
-
       return snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
     } catch (e) {
       _logService.logError(
           'CustomerService', 'Aktif müşterileri getirme hatası: $e', null);
-      return [];
+      rethrow;
     }
   }
 
@@ -116,6 +106,34 @@ class CustomerService {
       _logService.logError('CustomerService',
           'Süresi dolacak üyelikleri getirme hatası: $e', null);
       return [];
+    }
+  }
+
+  // Müşteri durumunu güncelle (aktif/pasif)
+  Future<void> updateCustomerStatus(String customerId, bool isActive) async {
+    try {
+      await _firestore
+          .collection('customers')
+          .doc(customerId)
+          .update({'isActive': isActive});
+    } catch (e) {
+      _logService.logError(
+          'CustomerService', 'Müşteri durumu güncelleme hatası: $e', null);
+      rethrow;
+    }
+  }
+
+  // Ödenen taksit sayısını güncelle
+  Future<void> updatePaidInstallments(
+      String customerId, int paidInstallments) async {
+    try {
+      await _firestore.collection('customers').doc(customerId).update({
+        'paidInstallments': paidInstallments,
+      });
+    } catch (e) {
+      _logService.logError(
+          'CustomerService', 'Taksit güncelleme hatası: $e', null);
+      rethrow;
     }
   }
 }

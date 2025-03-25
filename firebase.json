@@ -1,1 +1,34 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:android:4ed4029504d82503628806","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:ios:b78ee29ed6247032628806","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:ios:b78ee29ed6247032628806","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"gymmanagement-app","configurations":{"android":"1:949364734579:android:4ed4029504d82503628806","ios":"1:949364734579:ios:b78ee29ed6247032628806","macos":"1:949364734579:ios:b78ee29ed6247032628806","web":"1:949364734579:web:2bf387fe7578f1e1628806","windows":"1:949364734579:web:3636b1bc7aae8b0f628806"}}}}}}
+{"flutter":{"platforms":{"android":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:android:4ed4029504d82503628806","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:ios:b78ee29ed6247032628806","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"gymmanagement-app","appId":"1:949364734579:ios:b78ee29ed6247032628806","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"gymmanagement-app","configurations":{"android":"1:949364734579:android:4ed4029504d82503628806","ios":"1:949364734579:ios:b78ee29ed6247032628806","macos":"1:949364734579:ios:b78ee29ed6247032628806","web":"1:949364734579:web:2bf387fe7578f1e1628806","windows":"1:949364734579:web:3636b1bc7aae8b0f628806"}}}}},
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
+}

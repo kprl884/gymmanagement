@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/customer.dart';
+import '../services/customer_service.dart';
+import '../utils/toast_helper.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -16,92 +17,21 @@ class CustomerDetailScreen extends StatefulWidget {
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   late Customer _customer;
   bool _isLoading = false;
-  Map<String, bool> _installments = {};
+  final CustomerService _customerService = CustomerService();
 
   @override
   void initState() {
     super.initState();
     _customer = widget.customer;
-    _installments = Map<String, bool>.from(_customer.installments);
-  }
-
-  Future<void> _updateInstallments() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('customers')
-          .doc(_customer.id)
-          .update({'installments': _installments});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ödemeler güncellendi')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata oluştu: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _deleteCustomer() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Müşteriyi Sil'),
-        content: const Text('Bu müşteriyi silmek istediğinizden emin misiniz?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        await FirebaseFirestore.instance
-            .collection('customers')
-            .doc(_customer.id)
-            .delete();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Müşteri silindi')),
-        );
-        Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata oluştu: $e')),
-        );
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   Future<void> _editCustomer() async {
-    final firstNameController =
-        TextEditingController(text: _customer.firstName);
-    final lastNameController = TextEditingController(text: _customer.lastName);
-    final phoneController = TextEditingController(text: _customer.phoneNumber);
-    final ageController = TextEditingController(text: _customer.age.toString());
+    final nameController = TextEditingController(text: _customer.name);
+    final emailController = TextEditingController(text: _customer.email);
+    final phoneController = TextEditingController(text: _customer.phone ?? '');
+    final notesController = TextEditingController(text: _customer.notes ?? '');
+
+    MembershipStatus status = _customer.status;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -112,22 +42,42 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: firstNameController,
-                decoration: const InputDecoration(labelText: 'Ad'),
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Ad Soyad'),
               ),
               TextField(
-                controller: lastNameController,
-                decoration: const InputDecoration(labelText: 'Soyad'),
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'E-posta'),
+                keyboardType: TextInputType.emailAddress,
               ),
               TextField(
                 controller: phoneController,
                 decoration: const InputDecoration(labelText: 'Telefon'),
                 keyboardType: TextInputType.phone,
               ),
+              const SizedBox(height: 16),
+
+              // Üyelik Durumu
+              DropdownButtonFormField<MembershipStatus>(
+                value: status,
+                decoration: const InputDecoration(labelText: 'Üyelik Durumu'),
+                items: MembershipStatus.values
+                    .map((s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(_getStatusText(s)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    status = value;
+                  }
+                },
+              ),
+
               TextField(
-                controller: ageController,
-                decoration: const InputDecoration(labelText: 'Yaş'),
-                keyboardType: TextInputType.number,
+                controller: notesController,
+                decoration: const InputDecoration(labelText: 'Notlar'),
+                maxLines: 3,
               ),
             ],
           ),
@@ -137,13 +87,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('İptal'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context, {
-                'firstName': firstNameController.text,
-                'lastName': lastNameController.text,
-                'phoneNumber': phoneController.text,
-                'age': int.tryParse(ageController.text) ?? _customer.age,
+                'name': nameController.text,
+                'email': emailController.text,
+                'phone': phoneController.text,
+                'status': status,
+                'notes': notesController.text,
               });
             },
             child: const Text('Kaydet'),
@@ -158,45 +109,255 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       });
 
       try {
-        await FirebaseFirestore.instance
-            .collection('customers')
-            .doc(_customer.id)
-            .update(result);
+        // Müşteri bilgilerini güncelle
+        final updatedCustomer = _customer.copyWith(
+          name: result['name'],
+          email: result['email'],
+          phone: result['phone'],
+          status: result['status'],
+          notes: result['notes'],
+        );
+
+        final success = await _customerService.updateCustomer(updatedCustomer);
 
         setState(() {
-          _customer = Customer(
-            id: _customer.id,
-            firstName: result['firstName'],
-            lastName: result['lastName'],
-            phoneNumber: result['phoneNumber'],
-            age: result['age'],
-            registrationDate: _customer.registrationDate,
-            membershipDuration: _customer.membershipDuration,
-            isInstallment: _customer.isInstallment,
-            installments: _customer.installments,
-          );
+          _isLoading = false;
+          if (success) {
+            _customer = updatedCustomer;
+            ToastHelper.showSuccessToast(
+                context, 'Müşteri bilgileri güncellendi');
+          } else {
+            ToastHelper.showErrorToast(context, 'Güncelleme başarısız oldu');
+          }
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Müşteri bilgileri güncellendi')),
-        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata oluştu: $e')),
-        );
-      } finally {
         setState(() {
           _isLoading = false;
         });
+        ToastHelper.showErrorToast(context, 'Hata: $e');
       }
     }
+  }
+
+  Future<void> _deleteCustomer() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Müşteriyi Sil'),
+        content: const Text(
+            'Bu müşteriyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final success = await _customerService.deleteCustomer(_customer.id);
+
+        if (success) {
+          ToastHelper.showSuccessToast(context, 'Müşteri silindi');
+          Navigator.pop(context, true); // Listeyi yenilemek için true döndür
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+          ToastHelper.showErrorToast(context, 'Silme işlemi başarısız oldu');
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        ToastHelper.showErrorToast(context, 'Hata: $e');
+      }
+    }
+  }
+
+  Future<void> _extendMembership() async {
+    int additionalMonths = 1;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Üyelik Süresini Uzat'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Kaç ay uzatmak istiyorsunuz?'),
+            const SizedBox(height: 16),
+            DropdownButton<int>(
+              value: additionalMonths,
+              items: List.generate(12, (i) => i + 1)
+                  .map((m) => DropdownMenuItem(
+                        value: m,
+                        child: Text('$m ay'),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  additionalMonths = value;
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, additionalMonths),
+            child: const Text('Uzat'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Mevcut bitiş tarihini al veya bugünden başlat
+        final DateTime startDate = _customer.membershipEndDate != null &&
+                _customer.membershipEndDate!.isAfter(DateTime.now())
+            ? _customer.membershipEndDate!
+            : DateTime.now();
+
+        // Yeni bitiş tarihini hesapla
+        final DateTime newEndDate = DateTime(
+          startDate.year,
+          startDate.month + result,
+          startDate.day,
+        );
+
+        // Müşteriyi güncelle
+        final updatedCustomer = _customer.copyWith(
+          membershipEndDate: newEndDate,
+          status: MembershipStatus.active, // Üyelik uzatıldığında aktif yap
+        );
+
+        final success = await _customerService.updateCustomer(updatedCustomer);
+
+        setState(() {
+          _isLoading = false;
+          if (success) {
+            _customer = updatedCustomer;
+            ToastHelper.showSuccessToast(context, 'Üyelik süresi uzatıldı');
+          } else {
+            ToastHelper.showErrorToast(context, 'Üyelik uzatma başarısız oldu');
+          }
+        });
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        ToastHelper.showErrorToast(context, 'Hata: $e');
+      }
+    }
+  }
+
+  String _getStatusText(MembershipStatus status) {
+    switch (status) {
+      case MembershipStatus.active:
+        return 'Aktif';
+      case MembershipStatus.expired:
+        return 'Süresi Dolmuş';
+      case MembershipStatus.pending:
+        return 'Beklemede';
+      case MembershipStatus.cancelled:
+        return 'İptal Edilmiş';
+      default:
+        return 'Bilinmiyor';
+    }
+  }
+
+  String? _getRemainingDaysText(DateTime endDate) {
+    final now = DateTime.now();
+    final difference = endDate.difference(now).inDays;
+
+    if (difference < 0) {
+      return 'Süresi dolmuş';
+    } else if (difference == 0) {
+      return 'Bugün bitiyor';
+    } else {
+      return '$difference gün kaldı';
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value, [String? additionalInfo]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+          if (additionalInfo != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: additionalInfo.contains('dolmuş')
+                    ? Colors.red[100]
+                    : additionalInfo.contains('gün kaldı') &&
+                            int.tryParse(additionalInfo.split(' ')[0]) !=
+                                null &&
+                            int.parse(additionalInfo.split(' ')[0]) <= 7
+                        ? Colors.orange[100]
+                        : Colors.green[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                additionalInfo,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: additionalInfo.contains('dolmuş')
+                      ? Colors.red[900]
+                      : additionalInfo.contains('gün kaldı') &&
+                              int.tryParse(additionalInfo.split(' ')[0]) !=
+                                  null &&
+                              int.parse(additionalInfo.split(' ')[0]) <= 7
+                          ? Colors.orange[900]
+                          : Colors.green[900],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_customer.firstName} ${_customer.lastName}'),
+        title: Text(_customer.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -215,108 +376,99 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Müşteri bilgileri kartı
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Kişisel Bilgiler',
-                            style: Theme.of(context).textTheme.titleLarge,
+                          const Text(
+                            'Müşteri Bilgileri',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const Divider(),
-                          _buildInfoRow('Ad Soyad',
-                              '${_customer.firstName} ${_customer.lastName}'),
-                          _buildInfoRow('Telefon', _customer.phoneNumber),
-                          _buildInfoRow('Yaş', _customer.age.toString()),
+                          _buildInfoRow('Ad Soyad', _customer.name),
+                          _buildInfoRow('E-posta', _customer.email),
+                          _buildInfoRow(
+                              'Telefon', _customer.phone ?? 'Belirtilmemiş'),
                           _buildInfoRow(
                             'Kayıt Tarihi',
                             DateFormat('dd/MM/yyyy')
                                 .format(_customer.registrationDate),
                           ),
                           _buildInfoRow(
-                            'Üyelik Süresi',
-                            '${_customer.membershipDuration} ay',
+                            'Üyelik Durumu',
+                            _getStatusText(_customer.status),
                           ),
-                          _buildInfoRow(
-                            'Ödeme Tipi',
-                            _customer.isInstallment ? 'Taksitli' : 'Peşin',
+                          if (_customer.membershipStartDate != null)
+                            _buildInfoRow(
+                              'Üyelik Başlangıç',
+                              DateFormat('dd/MM/yyyy')
+                                  .format(_customer.membershipStartDate!),
+                            ),
+                          if (_customer.membershipEndDate != null)
+                            _buildInfoRow(
+                              'Üyelik Bitiş',
+                              DateFormat('dd/MM/yyyy')
+                                  .format(_customer.membershipEndDate!),
+                              _getRemainingDaysText(
+                                  _customer.membershipEndDate!),
+                            ),
+                          if (_customer.notes != null &&
+                              _customer.notes!.isNotEmpty)
+                            _buildInfoRow('Notlar', _customer.notes!),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Üyelik işlemleri
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Üyelik İşlemleri',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(),
+                          ListTile(
+                            leading: const Icon(Icons.calendar_today),
+                            title: const Text('Üyelik Süresini Uzat'),
+                            onTap: _extendMembership,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.fitness_center),
+                            title: const Text('Fitness Planı Ata'),
+                            onTap: () {
+                              // Fitness planı atama ekranına git
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.assessment),
+                            title: const Text('Ölçüm Kaydet'),
+                            onTap: () {
+                              // Ölçüm kaydetme ekranına git
+                            },
                           ),
                         ],
                       ),
                     ),
                   ),
-                  if (_customer.isInstallment) ...[
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Taksit Ödemeleri',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const Divider(),
-                            ...(_installments.entries.toList()
-                                  ..sort((a, b) => DateFormat('MMMM yyyy')
-                                      .parse(a.key)
-                                      .compareTo(DateFormat('MMMM yyyy')
-                                          .parse(b.key))))
-                                .map(
-                              (entry) => CheckboxListTile(
-                                title: Text(entry.key),
-                                value: entry.value,
-                                onChanged: (bool? value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _installments[entry.key] = value;
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _updateInstallments,
-                                child: const Text('Ödemeleri Güncelle'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../models/customer.dart';
-import 'add_customer_screen.dart';
+import '../services/customer_service.dart';
 import 'customer_detail_screen.dart';
-import 'statistics_screen.dart';
+import 'add_customer_screen.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({Key? key}) : super(key: key);
@@ -13,13 +13,61 @@ class CustomerListScreen extends StatefulWidget {
 }
 
 class _CustomerListScreenState extends State<CustomerListScreen> {
-  final TextEditingController _searchController = TextEditingController();
+  final CustomerService _customerService = CustomerService();
+  List<Customer> _customers = [];
+  List<Customer> _filteredCustomers = [];
+  bool _isLoading = true;
   String _searchQuery = '';
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadCustomers();
+  }
+
+  Future<void> _loadCustomers() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final customers = await _customerService.getAllCustomers();
+      setState(() {
+        _customers = customers;
+        _filteredCustomers = customers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Müşteriler yüklenirken hata: $e')),
+      );
+    }
+  }
+
+  void _filterCustomers(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredCustomers = _customers;
+      } else {
+        _filteredCustomers = _customers.where((customer) {
+          final fullName = customer.name.toLowerCase();
+          final email = customer.email.toLowerCase();
+          final phone = customer.phone?.toLowerCase() ?? '';
+
+          return fullName.contains(_searchQuery) ||
+              email.contains(_searchQuery) ||
+              phone.contains(_searchQuery);
+        }).toList();
+      }
+    });
+  }
+
+  Future<void> _refreshCustomers() async {
+    await _loadCustomers();
   }
 
   @override
@@ -27,136 +75,147 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Müşteriler'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshCustomers,
+          ),
+        ],
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Müşteri Ara',
-                hintText: 'Ad, soyad veya telefon numarası',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
+              onChanged: _filterCustomers,
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('customers')
-                  .orderBy('registrationDate', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(child: Text('Hata: ${snapshot.error}'));
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                      child: Text('Henüz müşteri bulunmamaktadır.'));
-                }
-
-                final allCustomers = snapshot.data!.docs
-                    .map((doc) => Customer.fromFirestore(doc))
-                    .toList();
-
-                final filteredCustomers = _searchQuery.isEmpty
-                    ? allCustomers
-                    : allCustomers.where((customer) {
-                        final fullName =
-                            '${customer.firstName} ${customer.lastName}'
-                                .toLowerCase();
-                        return fullName.contains(_searchQuery) ||
-                            customer.phoneNumber.contains(_searchQuery);
-                      }).toList();
-
-                if (filteredCustomers.isEmpty) {
-                  return const Center(
-                    child: Text('Arama kriterlerine uygun müşteri bulunamadı.'),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: filteredCustomers.length,
-                  itemBuilder: (context, index) {
-                    final customer = filteredCustomers[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 8.0, vertical: 4.0),
-                      child: ListTile(
-                        title: Text(
-                          '${customer.firstName} ${customer.lastName}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text('Tel: ${customer.phoneNumber}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: customer.isInstallment
-                                    ? Colors.orange[100]
-                                    : Colors.green[100],
-                                borderRadius: BorderRadius.circular(12),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredCustomers.isEmpty
+                    ? const Center(child: Text('Müşteri bulunamadı'))
+                    : ListView.builder(
+                        itemCount: _filteredCustomers.length,
+                        itemBuilder: (context, index) {
+                          final customer = _filteredCustomers[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: ListTile(
+                              title: Text(
+                                customer.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
-                              child: Text(
-                                customer.isInstallment ? 'Taksitli' : 'Peşin',
-                                style: TextStyle(
-                                  color: customer.isInstallment
-                                      ? Colors.deepOrange
-                                      : Colors.green[800],
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              subtitle: Text(
+                                'Tel: ${customer.phone ?? 'Belirtilmemiş'}\n'
+                                'Durum: ${_getStatusText(customer.status)}',
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CustomerDetailScreen(customer: customer),
+                              isThreeLine: true,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (customer.membershipEndDate != null)
+                                    Chip(
+                                      label: Text(
+                                        DateFormat('dd/MM/yyyy').format(
+                                            customer.membershipEndDate!),
+                                      ),
+                                      backgroundColor:
+                                          _getMembershipColor(customer),
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.arrow_forward_ios),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CustomerDetailScreen(
+                                            customer: customer,
+                                          ),
+                                        ),
+                                      ).then((value) {
+                                        if (value == true) {
+                                          _refreshCustomers();
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CustomerDetailScreen(
+                                      customer: customer,
+                                    ),
+                                  ),
+                                ).then((value) {
+                                  if (value == true) {
+                                    _refreshCustomers();
+                                  }
+                                });
+                              },
                             ),
                           );
                         },
                       ),
-                    );
-                  },
-                );
-              },
-            ),
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
+          ).then((value) {
+            if (value == true) {
+              _refreshCustomers();
+            }
+          });
+        },
+        child: const Icon(Icons.add),
+      ),
     );
+  }
+
+  String _getStatusText(MembershipStatus status) {
+    switch (status) {
+      case MembershipStatus.active:
+        return 'Aktif';
+      case MembershipStatus.expired:
+        return 'Süresi Dolmuş';
+      case MembershipStatus.pending:
+        return 'Beklemede';
+      case MembershipStatus.cancelled:
+        return 'İptal Edilmiş';
+      default:
+        return 'Bilinmiyor';
+    }
+  }
+
+  Color _getMembershipColor(Customer customer) {
+    if (customer.status == MembershipStatus.expired) {
+      return Colors.red[100]!;
+    }
+
+    if (customer.membershipEndDate != null) {
+      final now = DateTime.now();
+      final difference = customer.membershipEndDate!.difference(now).inDays;
+
+      if (difference <= 7) {
+        return Colors.orange[100]!;
+      }
+    }
+
+    return Colors.green[100]!;
   }
 }

@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/user.dart';
+import '../services/user_service.dart';
+import '../services/theme_service.dart';
 import 'customer_list_screen.dart';
+import 'equipment_list_screen.dart';
+import 'fitness_plan_list_screen.dart';
 import 'statistics_screen.dart';
-import 'add_customer_screen.dart';
+import 'settings_screen.dart';
+import 'profile_screen.dart';
+import 'user_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -11,62 +19,150 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final UserService _userService = UserService();
+  AppUser? _currentUser;
+  bool _isLoading = true;
   int _selectedIndex = 0;
-  bool _isLoading = false;
 
-  final List<Widget> _screens = [
-    const CustomerListScreen(),
-    const StatisticsScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
 
-  Future<void> _onItemTapped(int index) async {
-    if (_selectedIndex == index) return;
-
+  Future<void> _loadUserData() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Kısa bir yükleme göstergesi için bekleme
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final userData = await _userService.getCurrentUserData();
+      setState(() {
+        _currentUser = userData;
+        _isLoading = false;
+      });
 
-    setState(() {
-      _selectedIndex = index;
-      _isLoading = false;
-    });
-  }
-
-  void _addNewCustomer() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
-    );
+      // Kullanıcı admin ise, admin hesabının varlığını kontrol et
+      if (_currentUser?.role == UserRole.admin) {
+        await _userService.ensureAdminExists();
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kullanıcı bilgileri yüklenirken hata: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
+
+    // Admin için ekranlar
+    final adminScreens = [
+      const CustomerListScreen(),
+      const EquipmentListScreen(),
+      const FitnessPlanListScreen(),
+      const StatisticsScreen(),
+      const UserManagementScreen(),
+      const SettingsScreen(),
+    ];
+
+    // Normal kullanıcı için ekranlar
+    final userScreens = [
+      const ProfileScreen(),
+      const FitnessPlanListScreen(),
+      const EquipmentListScreen(),
+    ];
+
+    // Admin için navigasyon öğeleri
+    final adminNavItems = [
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.people),
+        label: 'Müşteriler',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.fitness_center),
+        label: 'Ekipmanlar',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.assignment),
+        label: 'Fitness Planları',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.bar_chart),
+        label: 'İstatistikler',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.admin_panel_settings),
+        label: 'Kullanıcılar',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.settings),
+        label: 'Ayarlar',
+      ),
+    ];
+
+    // Normal kullanıcı için navigasyon öğeleri
+    final userNavItems = [
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.person),
+        label: 'Profilim',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.assignment),
+        label: 'Fitness Planları',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.fitness_center),
+        label: 'Ekipmanlar',
+      ),
+    ];
+
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Müşteriler',
+      appBar: AppBar(
+        title: Text(_isLoading
+            ? 'Yükleniyor...'
+            : _currentUser?.role == UserRole.admin
+                ? 'Spor Salonu Yönetimi (Admin)'
+                : 'Spor Salonu'),
+        actions: [
+          IconButton(
+            icon: Icon(
+                themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              themeService.toggleTheme();
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'İstatistikler',
+          IconButton(
+            icon: const Icon(Icons.exit_to_app),
+            onPressed: () async {
+              await _userService.signOut();
+            },
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewCustomer,
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentUser?.role == UserRole.admin
+              ? adminScreens[_selectedIndex]
+              : userScreens[_selectedIndex],
+      bottomNavigationBar: _isLoading
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              items: _currentUser?.role == UserRole.admin
+                  ? adminNavItems
+                  : userNavItems,
+              type: BottomNavigationBarType.fixed,
+            ),
     );
   }
 }

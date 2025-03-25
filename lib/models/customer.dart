@@ -1,85 +1,119 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum MembershipStatus { active, expired, pending, cancelled }
+
 class Customer {
-  final String? id;
-  final String firstName;
-  final String lastName;
-  final String phoneNumber;
-  final int age;
+  final String id;
+  final String name;
+  final String email;
+  final String? phone;
   final DateTime registrationDate;
-  final int membershipDuration; // ay cinsinden
-  final bool isInstallment; // true: taksitli, false: peşin
-  final Map<String, bool> installments; // <ay, ödemeDurumu>
+  final DateTime? membershipStartDate;
+  final DateTime? membershipEndDate;
+  final MembershipStatus status;
+  final String? notes;
+  final String? profileImageUrl;
+  final List<String>? assignedPlans;
+  final Map<String, dynamic>? measurements;
+  final String? assignedTrainer;
 
   Customer({
-    this.id,
-    required this.firstName,
-    required this.lastName,
-    required this.phoneNumber,
-    required this.age,
+    required this.id,
+    required this.name,
+    required this.email,
+    this.phone,
     required this.registrationDate,
-    required this.membershipDuration,
-    required this.isInstallment,
-    required this.installments,
+    this.membershipStartDate,
+    this.membershipEndDate,
+    required this.status,
+    this.notes,
+    this.profileImageUrl,
+    this.assignedPlans,
+    this.measurements,
+    this.assignedTrainer,
   });
 
-  // JSON'dan Customer nesnesine dönüştürme
-  factory Customer.fromJson(Map<String, dynamic> json) {
-    return Customer(
-      id: json['id'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
-      phoneNumber: json['phoneNumber'],
-      age: json['age'],
-      registrationDate: (json['registrationDate'] as Timestamp).toDate(),
-      membershipDuration: json['membershipDuration'],
-      isInstallment: json['isInstallment'],
-      installments: Map<String, bool>.from(json['installments']),
-    );
-  }
+  // Firestore'dan veri oluşturma
+  factory Customer.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
 
-  // Customer nesnesinden JSON'a dönüştürme
-  Map<String, dynamic> toJson() {
-    return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'phoneNumber': phoneNumber,
-      'age': age,
-      'registrationDate': Timestamp.fromDate(registrationDate),
-      'membershipDuration': membershipDuration,
-      'isInstallment': isInstallment,
-      'installments': installments,
-    };
-  }
-
-  // Firestore'dan Customer nesnesine dönüştürme
-  factory Customer.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> snapshot) {
-    final data = snapshot.data()!;
     return Customer(
-      id: snapshot.id,
-      firstName: data['firstName'],
-      lastName: data['lastName'],
-      phoneNumber: data['phoneNumber'],
-      age: data['age'],
+      id: doc.id,
+      name: data['name'] ?? '',
+      email: data['email'] ?? '',
+      phone: data['phone'],
       registrationDate: (data['registrationDate'] as Timestamp).toDate(),
-      membershipDuration: data['membershipDuration'],
-      isInstallment: data['isInstallment'],
-      installments: Map<String, bool>.from(data['installments']),
+      membershipStartDate: data['membershipStartDate'] != null
+          ? (data['membershipStartDate'] as Timestamp).toDate()
+          : null,
+      membershipEndDate: data['membershipEndDate'] != null
+          ? (data['membershipEndDate'] as Timestamp).toDate()
+          : null,
+      status: MembershipStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == data['status'],
+        orElse: () => MembershipStatus.pending,
+      ),
+      notes: data['notes'],
+      profileImageUrl: data['profileImageUrl'],
+      assignedPlans: data['assignedPlans'] != null
+          ? List<String>.from(data['assignedPlans'])
+          : null,
+      measurements: data['measurements'],
+      assignedTrainer: data['assignedTrainer'],
     );
   }
 
-  // Customer nesnesinden Firestore'a dönüştürme
+  // Firestore'a veri kaydetme
   Map<String, dynamic> toFirestore() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'phoneNumber': phoneNumber,
-      'age': age,
+      'name': name,
+      'email': email,
+      'phone': phone,
       'registrationDate': Timestamp.fromDate(registrationDate),
-      'membershipDuration': membershipDuration,
-      'isInstallment': isInstallment,
-      'installments': installments,
+      'membershipStartDate': membershipStartDate != null
+          ? Timestamp.fromDate(membershipStartDate!)
+          : null,
+      'membershipEndDate': membershipEndDate != null
+          ? Timestamp.fromDate(membershipEndDate!)
+          : null,
+      'status': status.toString().split('.').last,
+      'notes': notes,
+      'profileImageUrl': profileImageUrl,
+      'assignedPlans': assignedPlans,
+      'measurements': measurements,
+      'assignedTrainer': assignedTrainer,
+      'lastUpdated': FieldValue.serverTimestamp(),
     };
+  }
+
+  // Müşteri bilgilerini güncelleme
+  Customer copyWith({
+    String? name,
+    String? email,
+    String? phone,
+    DateTime? membershipStartDate,
+    DateTime? membershipEndDate,
+    MembershipStatus? status,
+    String? notes,
+    String? profileImageUrl,
+    List<String>? assignedPlans,
+    Map<String, dynamic>? measurements,
+    String? assignedTrainer,
+  }) {
+    return Customer(
+      id: this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      registrationDate: this.registrationDate,
+      membershipStartDate: membershipStartDate ?? this.membershipStartDate,
+      membershipEndDate: membershipEndDate ?? this.membershipEndDate,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      assignedPlans: assignedPlans ?? this.assignedPlans,
+      measurements: measurements ?? this.measurements,
+      assignedTrainer: assignedTrainer ?? this.assignedTrainer,
+    );
   }
 }

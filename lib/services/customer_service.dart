@@ -136,4 +136,22 @@ class CustomerService {
       rethrow;
     }
   }
+
+  // Ödenen ayları güncelle
+  Future<void> updatePaidMonths(
+      String customerId, List<DateTime> paidMonths) async {
+    try {
+      // DateTime'ları Timestamp'e dönüştür
+      List<Timestamp> paidMonthsTimestamps =
+          paidMonths.map((date) => Timestamp.fromDate(date)).toList();
+
+      await _firestore.collection('customers').doc(customerId).update({
+        'paidMonths': paidMonthsTimestamps,
+      });
+    } catch (e) {
+      _logService.logError(
+          'CustomerService', 'Ödenen aylar güncellenirken hata: $e', null);
+      rethrow;
+    }
+  }
 }

@@ -25,33 +25,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     _customer = widget.customer;
   }
 
-  Future<void> _updatePaidInstallments(int newValue) async {
-    if (newValue < 0 || newValue > _customer.totalInstallments) {
-      ToastHelper.showErrorToast(context, 'Geçersiz taksit sayısı');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _customerService.updatePaidInstallments(_customer.id!, newValue);
-
-      setState(() {
-        _customer = _customer.copyWith(paidInstallments: newValue);
-        _isLoading = false;
-      });
-
-      ToastHelper.showSuccessToast(context, 'Taksit bilgisi güncellendi');
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
-    }
-  }
-
   Future<void> _updateCustomer() async {
     setState(() {
       _isLoading = true;
@@ -84,7 +57,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_customer.name),
+        title: Text('${_customer.name} ${_customer.surname}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -116,9 +89,11 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                             ),
                           ),
                           const Divider(),
-                          _buildInfoRow('Ad Soyad', _customer.name),
+                          _buildInfoRow('Ad', _customer.name),
+                          _buildInfoRow('Soyad', _customer.surname),
                           _buildInfoRow('Telefon', _customer.phone),
                           _buildInfoRow('E-posta', _customer.email),
+                          _buildInfoRow('Yaş', _customer.age.toString()),
                           _buildInfoRow(
                             'Kayıt Tarihi',
                             dateFormat.format(_customer.registrationDate),
@@ -136,7 +111,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Abonelik Bilgileri Kartı
+                  // Üyelik Bilgileri Kartı
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -144,7 +119,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Abonelik Bilgileri',
+                            'Üyelik Bilgileri',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -160,51 +135,86 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                             _customer.paymentType == PaymentType.cash
                                 ? 'Peşin'
                                 : 'Taksitli',
+                            valueColor:
+                                _customer.paymentType == PaymentType.cash
+                                    ? Colors.green
+                                    : Colors.orange,
                           ),
-                          if (_customer.paymentType == PaymentType.installment)
-                            _buildInfoRow(
-                              'Taksit Durumu',
-                              '${_customer.paidInstallments}/${_customer.totalInstallments}',
-                              valueColor: _customer.paidInstallments ==
-                                      _customer.totalInstallments
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
+                          _buildInfoRow(
+                            'Ödeme Durumu',
+                            _customer.paymentType == PaymentType.cash
+                                ? 'Tamamlandı'
+                                : '${_customer.paidMonths.length}/${_customer.subscriptionMonths} ay ödendi',
+                            valueColor: _customer.paidMonths.length ==
+                                    _customer.subscriptionMonths
+                                ? Colors.green
+                                : Colors.orange,
+                          ),
                         ],
                       ),
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // Ödenen aylar bölümü
+                  if (_customer.paymentType == PaymentType.installment)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ödenen Aylar',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Divider(),
+
+                            // Ödenen ayları göster
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(
+                                  _customer.subscriptionMonths, (index) {
+                                // Kayıt tarihinden itibaren ayları hesapla
+                                final month = DateTime(
+                                  _customer.registrationDate.year,
+                                  _customer.registrationDate.month + index,
+                                  1,
+                                );
+                                final monthName =
+                                    DateFormat('MMMM yyyy', 'tr_TR')
+                                        .format(month);
+
+                                // Bu ay ödenmiş mi kontrol et
+                                bool isPaid = _customer.paidMonths.any(
+                                    (paidMonth) =>
+                                        paidMonth.year == month.year &&
+                                        paidMonth.month == month.month);
+
+                                return FilterChip(
+                                  label: Text(monthName),
+                                  selected: isPaid,
+                                  onSelected: (bool selected) {
+                                    _updatePaidMonth(month, selected);
+                                  },
+                                  selectedColor: Colors.green[100],
+                                  checkmarkColor: Colors.green,
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   const SizedBox(height: 24),
 
                   const SizedBox(height: 12),
-
-                  // Taksit güncelleme butonları (sadece taksitli ödemede göster)
-                  if (_customer.paymentType == PaymentType.installment)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              if (_customer.paidInstallments <
-                                  _customer.totalInstallments) {
-                                _updatePaidInstallments(
-                                    _customer.paidInstallments + 1);
-                              } else {
-                                ToastHelper.showInfoToast(
-                                    context, 'Tüm taksitler ödenmiş');
-                              }
-                            },
-                            icon: const Icon(Icons.add_circle),
-                            label: const Text('Taksit Ödemesi Ekle'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                 ],
               ),
             ),
@@ -233,5 +243,45 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         ],
       ),
     );
+  }
+
+  // Ödenen ay güncelleme metodu
+  Future<void> _updatePaidMonth(DateTime month, bool isPaid) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Mevcut ödenen aylar listesini kopyala
+      List<DateTime> updatedPaidMonths = List.from(_customer.paidMonths);
+
+      if (isPaid) {
+        // Ay ödendi olarak işaretlendiyse ve listede yoksa ekle
+        if (!updatedPaidMonths.any((paidMonth) =>
+            paidMonth.year == month.year && paidMonth.month == month.month)) {
+          updatedPaidMonths.add(DateTime(month.year, month.month, 1));
+        }
+      } else {
+        // Ay ödenmedi olarak işaretlendiyse ve listede varsa çıkar
+        updatedPaidMonths.removeWhere((paidMonth) =>
+            paidMonth.year == month.year && paidMonth.month == month.month);
+      }
+
+      // Firestore'da güncelle
+      await _customerService.updatePaidMonths(_customer.id!, updatedPaidMonths);
+
+      // Müşteri nesnesini güncelle
+      setState(() {
+        _customer = _customer.copyWith(paidMonths: updatedPaidMonths);
+        _isLoading = false;
+      });
+
+      ToastHelper.showSuccessToast(context, 'Ödeme bilgisi güncellendi');
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
+    }
   }
 }

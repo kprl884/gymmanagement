@@ -200,4 +200,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
     );
   }
+
+  // Toplam geliri hesapla
+  void _calculateTotalRevenue() async {
+    try {
+      final customers = await _customerService.getAllCustomers();
+      final monthlyFee = 200; // Aylık ücret (örnek değer)
+
+      setState(() {
+        _totalRevenue = 0;
+        for (var customer in customers) {
+          // Abonelik süresine göre geliri hesapla
+          _totalRevenue += customer.subscriptionMonths * monthlyFee;
+        }
+      });
+    } catch (e) {
+      print('Gelir hesaplama hatası: $e');
+    }
+  }
 }

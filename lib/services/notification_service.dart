@@ -9,6 +9,7 @@ import '../models/customer.dart';
 import 'log_service.dart';
 import 'dart:async';
 import 'dart:math';
+import '../services/customer_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -18,6 +19,7 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   final LogService _logService = LogService();
+  final CustomerService _customerService = CustomerService();
 
   final BehaviorSubject<String?> onNotificationClick = BehaviorSubject();
 
@@ -182,22 +184,22 @@ class NotificationService {
     }
   }
 
-  // Tüm müşteriler için ödeme hatırlatmaları oluştur
-  Future<void> scheduleAllPaymentReminders(List<Customer> customers) async {
-    // Önce tüm bildirimleri temizle
-    await cancelAllNotifications();
+  // Üyelik hatırlatıcılarını planla
+  Future<void> scheduleAllMembershipReminders() async {
+    try {
+      final customers = await _customerService.getActiveCustomers();
+      final now = DateTime.now();
+      final currentMonthKey = DateFormat('MM-yyyy').format(now);
 
-    final DateTime now = DateTime.now();
-    final String currentMonthKey =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}';
-
-    for (final customer in customers) {
-      // Üyelik süresi dolmamış müşteriler için hatırlatma gönder
-      if (customer.membershipEndDate != null &&
-          customer.membershipEndDate!.isAfter(now) &&
-          customer.status == MembershipStatus.active) {
-        await schedulePaymentReminder(customer, currentMonthKey);
+      for (final customer in customers) {
+        // Üyelik süresi dolmamış müşteriler için hatırlatma gönder
+        if (customer.status == MembershipStatus.active) {
+          await schedulePaymentReminder(customer, currentMonthKey);
+        }
       }
+    } catch (e) {
+      _logService.logError('NotificationService',
+          'Üyelik hatırlatıcıları planlanırken hata: $e', null);
     }
   }
 

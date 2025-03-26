@@ -16,24 +16,46 @@ class AddCustomerScreen extends StatefulWidget {
 class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _surnameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
-  final _subscriptionMonthsController = TextEditingController(text: '1');
-  final _paidInstallmentsController = TextEditingController(text: '0');
-  final _totalInstallmentsController = TextEditingController(text: '1');
+  final _ageController = TextEditingController();
+
+  // Dropdown için değişkenler
+  int _selectedSubscriptionMonths = 1;
+
+  // Dropdown için seçenekler
+  final List<int> _subscriptionOptions =
+      List.generate(12, (i) => i + 1); // 1'den 12'ye kadar
 
   PaymentType _paymentType = PaymentType.cash;
   bool _isLoading = false;
   final CustomerService _customerService = CustomerService();
 
+  // Ödenen aylar için kontrol listesi
+  List<bool> _paidMonthsChecklist = List.generate(1, (index) => false);
+
+  @override
+  void initState() {
+    super.initState();
+    _updatePaidMonthsChecklist();
+  }
+
+  void _updatePaidMonthsChecklist() {
+    setState(() {
+      // Abonelik süresine göre ödenen aylar listesini güncelle
+      _paidMonthsChecklist =
+          List.generate(_selectedSubscriptionMonths, (index) => false);
+    });
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
+    _surnameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
-    _subscriptionMonthsController.dispose();
-    _paidInstallmentsController.dispose();
-    _totalInstallmentsController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -44,28 +66,47 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       });
 
       try {
-        // Ödeme tipine göre taksit bilgilerini ayarla
-        int paidInstallments = 0;
-        int totalInstallments = 1;
+        // Kayıt tarihini al
+        final registrationDate = DateTime.now();
+
+        // Ödenen ayları hesapla
+        List<DateTime> paidMonths = [];
 
         if (_paymentType == PaymentType.installment) {
-          paidInstallments = int.parse(_paidInstallmentsController.text);
-          totalInstallments = int.parse(_totalInstallmentsController.text);
+          // Taksitli ödemede, işaretlenen ayları ekle
+          for (int i = 0; i < _paidMonthsChecklist.length; i++) {
+            if (_paidMonthsChecklist[i]) {
+              // Kayıt tarihinden itibaren i ay sonrası
+              final paidMonth = DateTime(
+                registrationDate.year,
+                registrationDate.month + i,
+                1, // Ayın ilk günü
+              );
+              paidMonths.add(paidMonth);
+            }
+          }
         } else {
-          // Peşin ödemede tüm taksitler ödenmiş sayılır
-          paidInstallments = 1;
-          totalInstallments = 1;
+          // Peşin ödemede tüm aylar ödenmiş sayılır
+          for (int i = 0; i < _selectedSubscriptionMonths; i++) {
+            final paidMonth = DateTime(
+              registrationDate.year,
+              registrationDate.month + i,
+              1, // Ayın ilk günü
+            );
+            paidMonths.add(paidMonth);
+          }
         }
 
         final customer = Customer(
           name: _nameController.text,
+          surname: _surnameController.text,
           phone: _phoneController.text,
           email: _emailController.text,
-          registrationDate: DateTime.now(),
-          subscriptionMonths: int.parse(_subscriptionMonthsController.text),
+          age: int.parse(_ageController.text),
+          registrationDate: registrationDate,
+          subscriptionMonths: _selectedSubscriptionMonths,
           paymentType: _paymentType,
-          paidInstallments: paidInstallments,
-          totalInstallments: totalInstallments,
+          paidMonths: paidMonths,
           status: MembershipStatus.active,
         );
 
@@ -117,17 +158,32 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const Divider(),
                             TextFormField(
                               controller: _nameController,
                               decoration: const InputDecoration(
-                                labelText: 'Ad Soyad',
+                                labelText: 'Ad',
                                 border: OutlineInputBorder(),
                                 prefixIcon: Icon(Icons.person),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Lütfen ad soyad girin';
+                                  return 'Lütfen adı girin';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _surnameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Soyad',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen soyadı girin';
                                 }
                                 return null;
                               },
@@ -141,9 +197,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 prefixIcon: Icon(Icons.phone),
                               ),
                               keyboardType: TextInputType.phone,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Lütfen telefon numarası girin';
@@ -162,10 +215,33 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                               keyboardType: TextInputType.emailAddress,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Lütfen e-posta girin';
+                                  return 'Lütfen e-posta adresi girin';
                                 }
                                 if (!value.contains('@')) {
                                   return 'Geçerli bir e-posta adresi girin';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _ageController,
+                              decoration: const InputDecoration(
+                                labelText: 'Yaş',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.cake),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen yaş girin';
+                                }
+                                final age = int.tryParse(value);
+                                if (age == null || age < 1 || age > 120) {
+                                  return 'Geçerli bir yaş girin';
                                 }
                                 return null;
                               },
@@ -191,29 +267,32 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _subscriptionMonthsController,
+                            const Divider(),
+
+                            // Abonelik Süresi Dropdown
+                            DropdownButtonFormField<int>(
                               decoration: const InputDecoration(
-                                labelText: 'Abonelik Süresi (Ay)',
+                                labelText: 'Abonelik Süresi',
                                 border: OutlineInputBorder(),
                                 prefixIcon: Icon(Icons.calendar_month),
                               ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Lütfen abonelik süresini girin';
+                              value: _selectedSubscriptionMonths,
+                              items: _subscriptionOptions.map((int months) {
+                                return DropdownMenuItem<int>(
+                                  value: months,
+                                  child: Text('$months ay'),
+                                );
+                              }).toList(),
+                              onChanged: (int? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _selectedSubscriptionMonths = newValue;
+                                    _updatePaidMonthsChecklist();
+                                  });
                                 }
-                                final months = int.tryParse(value);
-                                if (months == null || months < 1) {
-                                  return 'Geçerli bir süre girin';
-                                }
-                                return null;
                               },
                             ),
+
                             const SizedBox(height: 16),
 
                             // Ödeme Tipi Seçimi
@@ -253,63 +332,44 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                               ],
                             ),
 
-                            // Taksit Bilgileri (Sadece taksitli ödemede göster)
+                            // Ödenen Aylar (Sadece taksitli ödemede göster)
                             if (_paymentType == PaymentType.installment) ...[
                               const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _paidInstallmentsController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Ödenen Taksit',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Gerekli';
-                                        }
-                                        final paid = int.tryParse(value);
-                                        final total = int.tryParse(
-                                            _totalInstallmentsController.text);
-                                        if (paid == null ||
-                                            paid < 0 ||
-                                            (total != null && paid > total)) {
-                                          return 'Geçersiz';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _totalInstallmentsController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Toplam Taksit',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Gerekli';
-                                        }
-                                        final total = int.tryParse(value);
-                                        if (total == null || total < 1) {
-                                          return 'Geçersiz';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                ],
+                              const Text(
+                                'Ödenen Aylar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Ay kutucukları
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: List.generate(
+                                    _paidMonthsChecklist.length, (index) {
+                                  // Kayıt tarihinden itibaren ayları hesapla
+                                  final now = DateTime.now();
+                                  final month =
+                                      DateTime(now.year, now.month + index, 1);
+                                  final monthName =
+                                      DateFormat('MMMM yyyy', 'tr_TR')
+                                          .format(month);
+
+                                  return FilterChip(
+                                    label: Text(monthName),
+                                    selected: _paidMonthsChecklist[index],
+                                    onSelected: (bool selected) {
+                                      setState(() {
+                                        _paidMonthsChecklist[index] = selected;
+                                      });
+                                    },
+                                    selectedColor: Colors.green[100],
+                                    checkmarkColor: Colors.green,
+                                  );
+                                }),
                               ),
                             ],
                           ],

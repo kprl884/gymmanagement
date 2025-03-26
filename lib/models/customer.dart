@@ -7,17 +7,16 @@ enum PaymentType { cash, installment }
 class Customer {
   final String? id;
   final String name;
+  final String surname;
   final String phone;
   final String email;
+  final int age;
   final DateTime registrationDate;
   final DateTime? lastVisitDate;
   final int subscriptionMonths; // Abonelik süresi (ay)
   final PaymentType paymentType; // Ödeme tipi (peşin/taksitli)
-  final int paidInstallments; // Ödenen taksit sayısı
-  final int totalInstallments; // Toplam taksit sayısı
+  final List<DateTime> paidMonths; // Ödenen aylar (tarihler)
   final bool isActive;
-  final DateTime? membershipStartDate;
-  final DateTime? membershipEndDate;
   final MembershipStatus status;
   final String? notes;
   final String? profileImageUrl;
@@ -28,17 +27,16 @@ class Customer {
   Customer({
     this.id,
     required this.name,
+    required this.surname,
     required this.phone,
     required this.email,
+    required this.age,
     required this.registrationDate,
     this.lastVisitDate,
     required this.subscriptionMonths,
     required this.paymentType,
-    required this.paidInstallments,
-    required this.totalInstallments,
+    required this.paidMonths,
     this.isActive = true,
-    this.membershipStartDate,
-    this.membershipEndDate,
     required this.status,
     this.notes,
     this.profileImageUrl,
@@ -47,15 +45,25 @@ class Customer {
     this.assignedTrainer,
   });
 
-  // Firestore'dan veri oluşturma
+  // Firestore'dan Customer oluştur
   factory Customer.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // Ödenen ayları Timestamp'ten DateTime'a dönüştür
+    List<DateTime> paidMonths = [];
+    if (data['paidMonths'] != null) {
+      paidMonths = (data['paidMonths'] as List)
+          .map((item) => (item as Timestamp).toDate())
+          .toList();
+    }
 
     return Customer(
       id: doc.id,
       name: data['name'] ?? '',
+      surname: data['surname'] ?? '',
       phone: data['phone'] ?? '',
       email: data['email'] ?? '',
+      age: data['age'] ?? 0,
       registrationDate: (data['registrationDate'] as Timestamp).toDate(),
       lastVisitDate: data['lastVisitDate'] != null
           ? (data['lastVisitDate'] as Timestamp).toDate()
@@ -64,15 +72,8 @@ class Customer {
       paymentType: data['paymentType'] == 'installment'
           ? PaymentType.installment
           : PaymentType.cash,
-      paidInstallments: data['paidInstallments'] ?? 0,
-      totalInstallments: data['totalInstallments'] ?? 1,
+      paidMonths: paidMonths,
       isActive: data['isActive'] ?? true,
-      membershipStartDate: data['membershipStartDate'] != null
-          ? (data['membershipStartDate'] as Timestamp).toDate()
-          : null,
-      membershipEndDate: data['membershipEndDate'] != null
-          ? (data['membershipEndDate'] as Timestamp).toDate()
-          : null,
       status: MembershipStatus.values.firstWhere(
         (e) => e.toString().split('.').last == data['status'],
         orElse: () => MembershipStatus.pending,
@@ -87,27 +88,26 @@ class Customer {
     );
   }
 
-  // Firestore'a veri kaydetme
+  // Customer'ı Firestore formatına dönüştür
   Map<String, dynamic> toFirestore() {
+    // Ödenen ayları Timestamp'e dönüştür
+    List<Timestamp> paidMonthsTimestamps =
+        paidMonths.map((date) => Timestamp.fromDate(date)).toList();
+
     return {
       'name': name,
+      'surname': surname,
       'phone': phone,
       'email': email,
+      'age': age,
       'registrationDate': Timestamp.fromDate(registrationDate),
       'lastVisitDate':
           lastVisitDate != null ? Timestamp.fromDate(lastVisitDate!) : null,
       'subscriptionMonths': subscriptionMonths,
       'paymentType':
           paymentType == PaymentType.installment ? 'installment' : 'cash',
-      'paidInstallments': paidInstallments,
-      'totalInstallments': totalInstallments,
+      'paidMonths': paidMonthsTimestamps,
       'isActive': isActive,
-      'membershipStartDate': membershipStartDate != null
-          ? Timestamp.fromDate(membershipStartDate!)
-          : null,
-      'membershipEndDate': membershipEndDate != null
-          ? Timestamp.fromDate(membershipEndDate!)
-          : null,
       'status': status.toString().split('.').last,
       'notes': notes,
       'profileImageUrl': profileImageUrl,
@@ -121,17 +121,16 @@ class Customer {
   // Müşteri bilgilerini güncelleme
   Customer copyWith({
     String? name,
+    String? surname,
     String? phone,
     String? email,
+    int? age,
     DateTime? registrationDate,
     DateTime? lastVisitDate,
     int? subscriptionMonths,
     PaymentType? paymentType,
-    int? paidInstallments,
-    int? totalInstallments,
+    List<DateTime>? paidMonths,
     bool? isActive,
-    DateTime? membershipStartDate,
-    DateTime? membershipEndDate,
     MembershipStatus? status,
     String? notes,
     String? profileImageUrl,
@@ -142,17 +141,16 @@ class Customer {
     return Customer(
       id: id,
       name: name ?? this.name,
+      surname: surname ?? this.surname,
       phone: phone ?? this.phone,
       email: email ?? this.email,
+      age: age ?? this.age,
       registrationDate: registrationDate ?? this.registrationDate,
       lastVisitDate: lastVisitDate ?? this.lastVisitDate,
       subscriptionMonths: subscriptionMonths ?? this.subscriptionMonths,
       paymentType: paymentType ?? this.paymentType,
-      paidInstallments: paidInstallments ?? this.paidInstallments,
-      totalInstallments: totalInstallments ?? this.totalInstallments,
+      paidMonths: paidMonths ?? this.paidMonths,
       isActive: isActive ?? this.isActive,
-      membershipStartDate: membershipStartDate ?? this.membershipStartDate,
-      membershipEndDate: membershipEndDate ?? this.membershipEndDate,
       status: status ?? this.status,
       notes: notes ?? this.notes,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,

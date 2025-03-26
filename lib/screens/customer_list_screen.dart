@@ -54,9 +54,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         _filteredCustomers = _customers;
       } else {
         _filteredCustomers = _customers.where((customer) {
-          final fullName = customer.name.toLowerCase();
+          final fullName = "${customer.name} ${customer.surname}".toLowerCase();
           final email = customer.email.toLowerCase();
-          final phone = customer.phone?.toLowerCase() ?? '';
+          final phone = customer.phone.toLowerCase();
 
           return fullName.contains(_searchQuery) ||
               email.contains(_searchQuery) ||
@@ -100,73 +100,72 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredCustomers.isEmpty
                     ? const Center(child: Text('Müşteri bulunamadı'))
-                    : ListView.builder(
-                        itemCount: _filteredCustomers.length,
-                        itemBuilder: (context, index) {
-                          final customer = _filteredCustomers[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: ListTile(
-                              title: Text(
-                                customer.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                'Tel: ${customer.phone ?? 'Belirtilmemiş'}\n'
-                                'Durum: ${_getStatusText(customer.status)}',
-                              ),
-                              isThreeLine: true,
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (customer.membershipEndDate != null)
-                                    Chip(
-                                      label: Text(
-                                        DateFormat('dd/MM/yyyy').format(
-                                            customer.membershipEndDate!),
-                                      ),
-                                      backgroundColor:
-                                          _getMembershipColor(customer),
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_forward_ios),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              CustomerDetailScreen(
-                                            customer: customer,
+                    : RefreshIndicator(
+                        onRefresh: _refreshCustomers,
+                        child: ListView.builder(
+                          itemCount: _filteredCustomers.length,
+                          itemBuilder: (context, index) {
+                            final customer = _filteredCustomers[index];
+                            return Card(
+                              color: _getCustomerCardColor(customer),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 4.0),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(
+                                    customer.name.isNotEmpty
+                                        ? customer.name[0].toUpperCase()
+                                        : '?',
+                                  ),
+                                ),
+                                title: Text(
+                                    '${customer.name} ${customer.surname}'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(customer.phone),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Chip(
+                                          label: Text(
+                                            '${customer.subscriptionMonths} ay',
                                           ),
+                                          backgroundColor: Colors.blue[100],
                                         ),
-                                      ).then((value) {
-                                        if (value == true) {
-                                          _refreshCustomers();
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => CustomerDetailScreen(
-                                      customer: customer,
+                                        const SizedBox(width: 4),
+                                        Chip(
+                                          label: Text(
+                                            customer.paymentType ==
+                                                    PaymentType.cash
+                                                ? 'Peşin'
+                                                : 'Taksitli',
+                                          ),
+                                          backgroundColor:
+                                              customer.paymentType ==
+                                                      PaymentType.cash
+                                                  ? Colors.green[100]
+                                                  : Colors.orange[100],
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ).then((value) {
-                                  if (value == true) {
-                                    _refreshCustomers();
-                                  }
-                                });
-                              },
-                            ),
-                          );
-                        },
+                                  ],
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CustomerDetailScreen(
+                                              customer: customer),
+                                    ),
+                                  ).then((_) => _refreshCustomers());
+                                },
+                              ),
+                            );
+                          },
+                        ),
                       ),
           ),
         ],
@@ -202,16 +201,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     }
   }
 
-  Color _getMembershipColor(Customer customer) {
+  Color _getCustomerCardColor(Customer customer) {
     if (customer.status == MembershipStatus.expired) {
       return Colors.red[100]!;
     }
 
-    if (customer.membershipEndDate != null) {
-      final now = DateTime.now();
-      final difference = customer.membershipEndDate!.difference(now).inDays;
-
-      if (difference <= 7) {
+    if (customer.paymentType == PaymentType.installment) {
+      bool allMonthsPaid =
+          customer.paidMonths.length >= customer.subscriptionMonths;
+      if (allMonthsPaid) {
+        return Colors.green[100]!;
+      } else {
         return Colors.orange[100]!;
       }
     }
@@ -221,14 +221,15 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   void _createDummyCustomer() async {
     final customer = Customer(
-      name: 'Test Müşteri',
+      name: 'Test',
+      surname: 'Müşteri',
       phone: '5551234567',
       email: 'test@example.com',
+      age: 30,
       registrationDate: DateTime.now(),
       subscriptionMonths: 3,
       paymentType: PaymentType.cash,
-      paidInstallments: 1,
-      totalInstallments: 1,
+      paidMonths: [],
       status: MembershipStatus.active,
     );
 

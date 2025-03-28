@@ -209,6 +209,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ),
                   ),
                   const Divider(),
+                  if (_customer.status != MembershipStatus.active)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        'Üyelik ${_getStatusText(_customer.status).toLowerCase()} olduğu için yeni ödeme alınamaz.',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                   ..._buildPaymentHistory(),
                 ],
               ),
@@ -261,6 +272,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             _customer.registrationDate.day,
           );
 
+          // Müşteri aktif değilse ödeme yapılamaz
+          final canPay = _customer.status == MembershipStatus.active;
+
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: isPaid ? Colors.green : Colors.grey,
@@ -274,7 +288,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             trailing: isPaid
                 ? const Icon(Icons.done_all, color: Colors.green)
                 : TextButton(
-                    onPressed: () => _recordSpecificPayment(index),
+                    onPressed:
+                        canPay ? () => _recordSpecificPayment(index) : null,
                     child: const Text('Öde'),
                   ),
           );
@@ -495,6 +510,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   TextFormField(
                     controller: _surnameController,
                     decoration: const InputDecoration(labelText: 'Soyad'),
@@ -505,6 +521,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   TextFormField(
                     controller: _phoneController,
                     decoration: const InputDecoration(labelText: 'Telefon'),
@@ -515,6 +532,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(labelText: 'E-posta'),
@@ -525,6 +543,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   TextFormField(
                     controller: _ageController,
                     decoration: const InputDecoration(labelText: 'Yaş'),
@@ -539,6 +558,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   TextFormField(
                     controller: _notesController,
                     decoration: const InputDecoration(labelText: 'Notlar'),
@@ -585,6 +605,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       }
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   DropdownButtonFormField<PaymentType>(
                     value: _paymentType,
                     decoration: const InputDecoration(
@@ -605,6 +626,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       }
                     },
                   ),
+                  const SizedBox(height: 8.0), // Dikey boşluk
                   DropdownButtonFormField<int>(
                     value: _subscriptionMonths,
                     decoration: const InputDecoration(

@@ -34,28 +34,42 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCustomers();
+    // Sayfa açılır açılmaz boş liste göster, sonra verileri yükle
+    _customers = [];
+    _filteredCustomers = [];
+    _isLoading = false; // Başlangıçta loading gösterme
+
+    // Hafif gecikme ile yüklemeyi başlat
+    Future.delayed(Duration.zero, () {
+      _loadCustomers();
+    });
   }
 
   Future<void> _loadCustomers() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final customers = await _customerService.getAllCustomers();
-      setState(() {
-        _customers = customers;
-        _applyFiltersAndSort();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _customers = customers;
+          _applyFiltersAndSort();
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Müşteriler yüklenirken hata: $e')),
-      );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Müşteriler yüklenirken hata: $e')),
+        );
+      }
     }
   }
 
@@ -402,13 +416,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const AddCustomerScreen(),
             ),
           );
-          _loadCustomers(); // Yeni müşteri eklenince listeyi yenile
+
+          // Eğer yeni müşteri eklendiyse listeyi yenile
+          if (result == true) {
+            _loadCustomers();
+          }
         },
         child: const Icon(Icons.add),
       ),

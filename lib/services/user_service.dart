@@ -26,19 +26,10 @@ class UserService {
       _logService.logInfo('UserService', 'Kayıt işlemi başlatılıyor: $email');
 
       // Firebase Auth ile kullanıcı oluştur
-      _logService.logInfo(
-          'UserService', 'Firebase Auth kullanıcısı oluşturuluyor...');
-
-      final userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          )
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException(
-                'Firebase Auth işlemi zaman aşımına uğradı'),
-          );
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       _logService.logInfo('UserService',
           'Firebase Auth kullanıcısı oluşturuldu: ${userCredential.user?.uid}');
@@ -46,79 +37,66 @@ class UserService {
       // Kullanıcı bilgilerini Firestore'a kaydet
       if (userCredential.user != null) {
         try {
-          _logService.logInfo('UserService', 'Firestore kaydı başlatılıyor...');
-
           // Rol belirleme
           UserRole role;
 
+          // Eğer rol belirtilmişse onu kullan
           if (providedRole != null) {
             role = providedRole;
+            _logService.logInfo('UserService', 'Belirtilen rol atandı: $role');
           } else {
             // Admin e-posta listesi
-            role = UserRole.customer; // Varsayılan rol
-            final List<String> adminEmails = ['admin@hotmail.com'];
+            final List<String> adminEmails = [
+              'admin@hotmail.com',
+              'admin@example.com'
+            ];
 
-            // E-posta admin listesinde mi kontrol et
+            // E-posta admin listesinde mi kontrol et (küçük harfe çevirerek)
             if (adminEmails.contains(email.toLowerCase())) {
               role = UserRole.admin;
-              _logService.logInfo('UserService', 'Admin rolü atandı: $email');
+              _logService.logInfo('UserService',
+                  'Admin e-postası tespit edildi, admin rolü atanıyor: $email');
+            } else {
+              role = UserRole.customer; // Varsayılan rol
+              _logService.logInfo('UserService',
+                  'Standart e-posta, müşteri rolü atanıyor: $email');
             }
           }
 
-          // Veriyi daha küçük parçalara böl (önce sadece temel bilgiler)
-          final basicUserData = {
+          // Rol değerini string olarak kaydet
+          final String roleString = role.toString().split('.').last;
+          _logService.logInfo('UserService', 'Kaydedilecek rol: $roleString');
+
+          // Veriyi Firestore'a kaydet
+          final userData = {
             'email': email,
             'name': name,
-            'role': role.toString().split('.').last,
+            'surname': '', // Varsayılan boş soyad
+            'role': roleString,
             'createdAt': Timestamp.now(),
             'isActive': true,
           };
 
-          // Temel kullanıcı verilerini kaydet - Hata olsa bile devam et
-          _logService.logInfo(
-              'UserService', 'Temel kullanıcı bilgileri kaydediliyor...');
+          // Firestore'a yazma işlemi
+          await _firestore
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set(userData);
 
-          try {
-            await _firestore
-                .collection('users')
-                .doc(userCredential.user!.uid)
-                .set(basicUserData)
-                .timeout(
-              const Duration(seconds: 15),
-              onTimeout: () {
-                _logService.logWarning('UserService',
-                    'Firestore yazma zaman aşımı - yine de devam ediliyor');
-                return;
-              },
-            );
-            _logService.logInfo('UserService', 'Firestore kaydı tamamlandı');
-          } catch (firestoreWriteError) {
-            // Firestore yazma hatası olsa bile kullanıcı oluşturuldu, devam et
-            _logService.logWarning('UserService',
-                'Firestore yazma hatası, ancak kullanıcı oluşturuldu: $firestoreWriteError');
-          }
+          _logService.logInfo('UserService',
+              'Kullanıcı Firestore\'a kaydedildi, rol: $roleString');
 
           return userCredential;
-        } catch (firestoreError) {
+        } catch (e) {
           _logService.logError(
-              'UserService', 'Firestore kayıt hatası: $firestoreError', null);
-
-          // ÖNEMLİ: Burada kullanıcıyı silme kısmını kaldırdık
-          // Firestore hatası olsa bile kullanıcı oluşturulduğu için başarılı sayıyoruz
-          _logService.logWarning('UserService',
-              'Firestore kaydı başarısız oldu ama kullanıcı oluşturuldu - yine de devam ediliyor');
-
-          return userCredential;
+              'UserService', 'Firestore kayıt hatası: $e', null);
+          rethrow;
         }
       }
 
       return userCredential;
-    } on FirebaseAuthException catch (e) {
-      _logService.logError('UserService',
-          'Firebase Auth hatası: ${e.code} - ${e.message}', null);
-      rethrow;
     } catch (e) {
-      _logService.logError('UserService', 'Beklenmeyen hata: $e', null);
+      _logService.logError('UserService', 'Kullanıcı kayıt hatası: $e', null);
       rethrow;
     }
   }
@@ -127,12 +105,36 @@ class UserService {
   Future<UserCredential> signInWithEmailAndPassword(
       String email, String password) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      // Firebase Auth ile giriş yap
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Kullanıcı hesabının aktif olup olmadığını kontrol et
+      final userData = await _firestore
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (userData.exists) {
+        final isActive = userData.data()?['isActive'] ?? true;
+
+        if (!isActive) {
+          // Kullanıcı pasif ise, oturumu kapat ve hata fırlat
+          await _auth.signOut();
+          throw Exception(
+              'Hesabınız pasif durumda. Lütfen yönetici ile iletişime geçin.');
+        }
+      }
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      _logService.logError(
+          'UserService', 'Oturum açma hatası: ${e.code} - ${e.message}', null);
+      rethrow;
     } catch (e) {
-      _logService.logError('UserService', 'Giriş hatası: $e', null);
+      _logService.logError('UserService', 'Beklenmeyen hata: $e', null);
       rethrow;
     }
   }
@@ -159,46 +161,34 @@ class UserService {
     }
   }
 
-  // Mevcut kullanıcının bilgilerini al - timeout ile
+  // Mevcut kullanıcının verilerini getir
   Future<AppUser?> getCurrentUserData() async {
-    if (currentUser == null) return null;
-
     try {
-      final doc = await _runWithTimeout(
-        _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get(const GetOptions(source: Source.serverAndCache)),
-        timeoutSeconds: 5,
-      );
-
-      if (doc.exists) {
-        return AppUser.fromFirestore(doc);
-      }
-      return null;
-    } on TimeoutException catch (e) {
-      _logService.logWarning(
-          'UserService', 'Kullanıcı bilgileri getirme zaman aşımı: $e');
-
-      // Zaman aşımında cache'den okumayı dene
-      try {
-        final cachedDoc = await _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get(const GetOptions(source: Source.cache));
-
-        if (cachedDoc.exists) {
-          return AppUser.fromFirestore(cachedDoc);
-        }
-      } catch (cacheError) {
-        _logService.logError(
-            'UserService', 'Cache okuma hatası: $cacheError', null);
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        return null;
       }
 
-      return null;
+      final doc =
+          await _firestore.collection('users').doc(currentUser.uid).get();
+
+      if (!doc.exists) {
+        _logService.logWarning('UserService',
+            'Kullanıcı Firestore\'da bulunamadı: ${currentUser.uid}');
+        return null;
+      }
+
+      // Kullanıcı verilerini al
+      final userData = AppUser.fromFirestore(doc);
+
+      // Rol bilgisini kontrol et ve logla
+      _logService.logInfo('UserService',
+          'Kullanıcı rolü: ${userData.role}, email: ${userData.email}');
+
+      return userData;
     } catch (e) {
       _logService.logError(
-          'UserService', 'Kullanıcı bilgilerini getirme hatası: $e', null);
+          'UserService', 'Kullanıcı verisi getirme hatası: $e', null);
       return null;
     }
   }
@@ -218,13 +208,25 @@ class UserService {
   // Kullanıcı rolünü güncelle
   Future<void> updateUserRole(String userId, UserRole role) async {
     try {
+      // Önce mevcut kullanıcının admin olup olmadığını kontrol et
+      final currentUserData = await getCurrentUserData();
+      if (currentUserData?.role != UserRole.admin) {
+        throw Exception('Bu işlemi gerçekleştirmek için yetkiniz yok.');
+      }
+
       await _firestore.collection('users').doc(userId).update({
         'role': role.toString().split('.').last,
       });
     } catch (e) {
-      _logService.logError(
-          'UserService', 'Kullanıcı rolü güncellenirken hata: $e', null);
-      rethrow;
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        _logService.logError('UserService',
+            'İzin hatası: Bu işlemi gerçekleştirmek için yetkiniz yok.', null);
+        throw Exception('Bu işlemi gerçekleştirmek için yetkiniz yok.');
+      } else {
+        _logService.logError(
+            'UserService', 'Kullanıcı rolü güncellenirken hata: $e', null);
+        rethrow;
+      }
     }
   }
 

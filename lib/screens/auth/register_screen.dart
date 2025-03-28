@@ -101,7 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Kayıt başarılı, kullanıcıyı ana sayfaya yönlendir
         Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       } catch (e, stackTrace) {
-        _logService.logError('RegisterScreen', e, stackTrace);
+        _logService.logError('RegisterScreen', 'Kayıt hatası: $e', stackTrace);
 
         if (!mounted) return;
 

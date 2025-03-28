@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return; // Navigasyon sonrası işlemleri durdur
         }
       } catch (e, stackTrace) {
-        _logService.logError('LoginScreen', e, stackTrace);
+        _logService.logError('LoginScreen', 'Giriş hatası: $e', stackTrace);
 
         if (!mounted) return;
 

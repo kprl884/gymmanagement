@@ -452,35 +452,48 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       });
 
       try {
-        // Müşteri nesnesini güncelle
-        final updatedCustomer = _customer.copyWith(
+        // Müşteriyi güncelle
+        final updatedCustomer = Customer(
+          id: _customer.id, // Mevcut ID'yi koru!
           name: _nameController.text,
           surname: _surnameController.text,
           phone: _phoneController.text,
           email: _emailController.text,
           age: int.parse(_ageController.text),
-          notes: _notesController.text.isEmpty ? null : _notesController.text,
-          status: _status,
-          paymentType: _paymentType,
+          registrationDate: _customer.registrationDate, // Orijinal kayıt tarihini koru
           subscriptionMonths: _subscriptionMonths,
+          paymentType: _paymentType,
+          paidMonths: _customer.paidMonths, // Mevcut ödeme bilgilerini koru
+          status: _status,
+          notes: _notesController.text.isEmpty ? null : _notesController.text,
+          lastVisitDate: _customer.lastVisitDate,
+          isActive: _customer.isActive,
+          profileImageUrl: _customer.profileImageUrl,
+          assignedPlans: _customer.assignedPlans,
+          measurements: _customer.measurements,
+          assignedTrainer: _customer.assignedTrainer,
         );
 
-        // Firestore'da güncelle
         await _customerService.updateCustomer(updatedCustomer);
 
-        // State'i güncelle
-        setState(() {
-          _customer = updatedCustomer;
-          _isLoading = false;
-          _isEditing = false;
-        });
+        if (mounted) {
+          // İşlem başarılı olduğunda güncelle
+          setState(() {
+            _customer = updatedCustomer;
+            _isLoading = false;
+            _isEditing = false; // Düzenleme modundan çık
+          });
 
-        ToastHelper.showSuccessToast(context, 'Müşteri bilgileri güncellendi');
+          // Başarı mesajını göster
+          ToastHelper.showSuccessToast(context, 'Müşteri başarıyla güncellendi');
+        }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ToastHelper.showErrorToast(context, 'Müşteri güncellenirken hata: $e');
+        }
       }
     }
   }

@@ -7,10 +7,14 @@ class CustomerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LogService _logService = LogService();
 
-  // Tüm müşterileri getir
+  // Tüm müşterileri getir - önbellek kullanarak
   Future<List<Customer>> getAllCustomers() async {
     try {
-      final snapshot = await _firestore.collection('customers').get();
+      // Önce önbellekten veriyi al, sonra sunucudan güncelle
+      final snapshot = await _firestore
+          .collection('customers')
+          .get(const GetOptions(source: Source.serverAndCache));
+
       return snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
     } catch (e) {
       _logService.logError(
@@ -39,11 +43,19 @@ class CustomerService {
   // Müşteri ekle
   Future<void> addCustomer(Customer customer) async {
     try {
-      await _firestore.collection('customers').add(customer.toFirestore());
+      print("CustomerService: addCustomer başladı");
+
+      // Firestore'a ekleme işlemini tamamla ve dönen belge referansını al
+      final docRef = await _firestore.collection('customers').add(customer.toFirestore());
+
+      print("CustomerService: addCustomer başarılı, ID: ${docRef.id}");
+
+      return; // Başarılı ise fonksiyondan çık
     } catch (e) {
+      print("CustomerService: addCustomer hatası: $e");
       _logService.logError(
           'CustomerService', 'Müşteri ekleme hatası: $e', null);
-      rethrow;
+      rethrow; // Hatayı yeniden fırlat
     }
   }
 
@@ -74,12 +86,12 @@ class CustomerService {
     }
   }
 
-  // Aktif müşterileri getir
+  // Sadece aktif müşterileri getir
   Future<List<Customer>> getActiveCustomers() async {
     try {
       final snapshot = await _firestore
           .collection('customers')
-          .where('isActive', isEqualTo: true)
+          .where('status', isEqualTo: 'active')
           .get();
       return snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
     } catch (e) {
@@ -154,6 +166,26 @@ class CustomerService {
     } catch (e) {
       _logService.logError(
           'CustomerService', 'Ödenen aylar güncellenirken hata: $e', null);
+      rethrow;
+    }
+  }
+
+  // Sayfalı müşteri getirme
+  Future<List<Customer>> getCustomersPaginated(int limit,
+      [DocumentSnapshot? lastDocument]) async {
+    try {
+      Query query = _firestore.collection('customers').limit(limit);
+
+      // Eğer son belge varsa, ondan sonrasını getir
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+      return snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
+    } catch (e) {
+      _logService.logError(
+          'CustomerService', 'Sayfalı müşteri getirme hatası: $e', null);
       rethrow;
     }
   }

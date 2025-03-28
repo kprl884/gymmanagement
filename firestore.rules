@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Test modu: Tüm okuma ve yazma işlemlerine izin ver
+    // NOT: Bu kuralları sadece geliştirme aşamasında kullanın!
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+} 

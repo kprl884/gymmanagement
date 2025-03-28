@@ -20,6 +20,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _ageController = TextEditingController();
+  final _notesController = TextEditingController();
 
   // Dropdown için değişkenler
   int _selectedSubscriptionMonths = 1;
@@ -56,6 +57,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _ageController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -66,8 +68,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       });
 
       try {
+        // Adımı işaretleyelim
+        print("Müşteri kaydı başlıyor");
+
         // Kayıt tarihini al
         final registrationDate = DateTime.now();
+
+        // Adımı işaretleyelim
+        print("Ödenen aylar hesaplanıyor");
 
         // Ödenen ayları hesapla
         List<DateTime> paidMonths = [];
@@ -97,6 +105,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           }
         }
 
+        // Adımı işaretleyelim
+        print("Müşteri nesnesi oluşturuluyor");
+
         final customer = Customer(
           name: _nameController.text,
           surname: _surnameController.text,
@@ -108,22 +119,45 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           paymentType: _paymentType,
           paidMonths: paidMonths,
           status: MembershipStatus.active,
+          notes: _notesController.text.isEmpty ? null : _notesController.text,
         );
 
-        await _customerService.addCustomer(customer);
+        // Adımı işaretleyelim
+        print("Firestore'a yazma başlıyor");
 
-        if (!mounted) return;
+        // Yazma işlemini await ile bekletelim ve bir try-catch içine alalım
+        try {
+          await _customerService.addCustomer(customer);
+          print("Firestore'a yazma tamamlandı");
+        } catch (firebaseError) {
+          print("Firestore yazma hatası: $firebaseError");
+          throw firebaseError; // Hatayı yukarıya gönder
+        }
 
-        ToastHelper.showSuccessToast(context, 'Müşteri başarıyla eklendi');
-        Navigator.pop(context, true); // Başarılı olduğunu bildir
+        // Başarılı olduğunu gösterelim
+        print("İşlem başarılı, pop yapılıyor");
+
+        // mounted kontrolünden sonra
+        if (mounted) {
+          // İşlem başarılı olduğunda loading durumunu kapat
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Başarı mesajını göster
+          ToastHelper.showSuccessToast(context, 'Müşteri başarıyla eklendi');
+
+          // Önceki sayfaya dön ve başarılı olduğunu bildir
+          Navigator.pop(context, true);
+        }
       } catch (e) {
-        if (!mounted) return;
-        ToastHelper.showErrorToast(context, 'Müşteri eklenirken hata: $e');
-      } finally {
+        print("Genel hata: $e");
+
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
+          ToastHelper.showErrorToast(context, 'Müşteri eklenirken hata: $e');
         }
       }
     }
@@ -245,6 +279,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 }
                                 return null;
                               },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _notesController,
+                              decoration: const InputDecoration(
+                                labelText: 'Notlar',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.note),
+                              ),
+                              keyboardType: TextInputType.multiline,
                             ),
                           ],
                         ),

@@ -9,7 +9,7 @@ import 'fitness_plan_list_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
-import 'user_management_screen.dart';
+import 'admin/user_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -23,6 +23,57 @@ class _HomeScreenState extends State<HomeScreen> {
   AppUser? _currentUser;
   bool _isLoading = true;
   int _selectedIndex = 0;
+
+  // Admin için ekranlar
+  final List<Widget> adminScreens = [
+    const CustomerListScreen(), // Müşteriler
+    const StatisticsScreen(), // İstatistikler
+    const UserManagementScreen(), // Kullanıcı Yönetimi
+    const SettingsScreen(), // Ayarlar
+  ];
+
+  // Normal kullanıcı için ekranlar
+  final List<Widget> userScreens = [
+    const EquipmentListScreen(), // Ekipmanlar
+    const FitnessPlanListScreen(), // Fitness Planları
+    const SettingsScreen(), // Ayarlar
+  ];
+
+  // Admin için navigasyon öğeleri
+  final List<BottomNavigationBarItem> adminNavItems = [
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.people),
+      label: 'Müşteriler',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.bar_chart),
+      label: 'İstatistikler',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.admin_panel_settings),
+      label: 'Kullanıcılar',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.settings),
+      label: 'Ayarlar',
+    ),
+  ];
+
+  // Normal kullanıcı için navigasyon öğeleri
+  final List<BottomNavigationBarItem> userNavItems = [
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.fitness_center),
+      label: 'Ekipmanlar',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.directions_run),
+      label: 'Fitness Planları',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.settings),
+      label: 'Ayarlar',
+    ),
+  ];
 
   @override
   void initState() {
@@ -59,67 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final themeService = Provider.of<ThemeService>(context);
-
-    // Admin için ekranlar
-    final adminScreens = [
-      const CustomerListScreen(),
-      const EquipmentListScreen(),
-      const FitnessPlanListScreen(),
-      const StatisticsScreen(),
-      const UserManagementScreen(),
-      const SettingsScreen(),
-    ];
-
-    // Normal kullanıcı için ekranlar
-    final userScreens = [
-      const ProfileScreen(),
-      const FitnessPlanListScreen(),
-      const EquipmentListScreen(),
-    ];
-
-    // Admin için navigasyon öğeleri
-    final adminNavItems = [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.people),
-        label: 'Müşteriler',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.fitness_center),
-        label: 'Ekipmanlar',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.assignment),
-        label: 'Fitness Planları',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.bar_chart),
-        label: 'İstatistikler',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.admin_panel_settings),
-        label: 'Kullanıcılar',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.settings),
-        label: 'Ayarlar',
-      ),
-    ];
-
-    // Normal kullanıcı için navigasyon öğeleri
-    final userNavItems = [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.person),
-        label: 'Profilim',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.assignment),
-        label: 'Fitness Planları',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.fitness_center),
-        label: 'Ekipmanlar',
-      ),
-    ];
 
     return Scaffold(
       appBar: AppBar(

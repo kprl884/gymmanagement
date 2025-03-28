@@ -390,15 +390,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                 ],
                               ),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => CustomerDetailScreen(
-                                        customer: customer),
-                                  ),
-                                );
-                                _loadCustomers(); // Detay ekranından dönünce listeyi yenile
+                              onTap: () {
+                                _showCustomerDetails(customer);
                               },
                             ),
                           );
@@ -486,5 +479,19 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
     await _customerService.addCustomer(customer);
     _loadCustomers();
+  }
+
+  Future<void> _showCustomerDetails(Customer customer) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CustomerDetailScreen(customer: customer),
+      ),
+    );
+
+    // Eğer müşteri silindiyse veya güncellendiyse listeyi yenile
+    if (result == true) {
+      _loadCustomers();
+    }
   }
 }

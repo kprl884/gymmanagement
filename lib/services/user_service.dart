@@ -26,17 +26,22 @@ class UserService {
       _logService.logInfo('UserService', 'Kayıt işlemi başlatılıyor: $email');
 
       // Firebase Auth ile kullanıcı oluştur
-      _logService.logInfo('UserService', 'Firebase Auth kullanıcısı oluşturuluyor...');
+      _logService.logInfo(
+          'UserService', 'Firebase Auth kullanıcısı oluşturuluyor...');
 
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Firebase Auth işlemi zaman aşımına uğradı'),
-      );
+      final userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException(
+                'Firebase Auth işlemi zaman aşımına uğradı'),
+          );
 
-      _logService.logInfo('UserService', 'Firebase Auth kullanıcısı oluşturuldu: ${userCredential.user?.uid}');
+      _logService.logInfo('UserService',
+          'Firebase Auth kullanıcısı oluşturuldu: ${userCredential.user?.uid}');
 
       // Kullanıcı bilgilerini Firestore'a kaydet
       if (userCredential.user != null) {
@@ -70,7 +75,8 @@ class UserService {
           };
 
           // Temel kullanıcı verilerini kaydet - Hata olsa bile devam et
-          _logService.logInfo('UserService', 'Temel kullanıcı bilgileri kaydediliyor...');
+          _logService.logInfo(
+              'UserService', 'Temel kullanıcı bilgileri kaydediliyor...');
 
           try {
             await _firestore
@@ -80,19 +86,22 @@ class UserService {
                 .timeout(
               const Duration(seconds: 15),
               onTimeout: () {
-                _logService.logWarning('UserService', 'Firestore yazma zaman aşımı - yine de devam ediliyor');
+                _logService.logWarning('UserService',
+                    'Firestore yazma zaman aşımı - yine de devam ediliyor');
                 return;
               },
             );
             _logService.logInfo('UserService', 'Firestore kaydı tamamlandı');
           } catch (firestoreWriteError) {
             // Firestore yazma hatası olsa bile kullanıcı oluşturuldu, devam et
-            _logService.logWarning('UserService', 'Firestore yazma hatası, ancak kullanıcı oluşturuldu: $firestoreWriteError');
+            _logService.logWarning('UserService',
+                'Firestore yazma hatası, ancak kullanıcı oluşturuldu: $firestoreWriteError');
           }
 
           return userCredential;
         } catch (firestoreError) {
-          _logService.logError('UserService', 'Firestore kayıt hatası: $firestoreError', null);
+          _logService.logError(
+              'UserService', 'Firestore kayıt hatası: $firestoreError', null);
 
           // ÖNEMLİ: Burada kullanıcıyı silme kısmını kaldırdık
           // Firestore hatası olsa bile kullanıcı oluşturulduğu için başarılı sayıyoruz
@@ -105,7 +114,8 @@ class UserService {
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      _logService.logError('UserService', 'Firebase Auth hatası: ${e.code} - ${e.message}', null);
+      _logService.logError('UserService',
+          'Firebase Auth hatası: ${e.code} - ${e.message}', null);
       rethrow;
     } catch (e) {
       _logService.logError('UserService', 'Beklenmeyen hata: $e', null);
@@ -338,7 +348,8 @@ class UserService {
 
   Future<bool> testFirestoreConnection() async {
     try {
-      _logService.logInfo('UserService', 'Firestore bağlantı testi başlatılıyor...');
+      _logService.logInfo(
+          'UserService', 'Firestore bağlantı testi başlatılıyor...');
 
       // Test verisi
       final testData = {
@@ -348,42 +359,50 @@ class UserService {
 
       // Test koleksiyonu
       final testCollection = _firestore.collection('connection_test');
-      final testDoc = testCollection.doc('test_doc_${DateTime.now().millisecondsSinceEpoch}');
+      final testDoc = testCollection
+          .doc('test_doc_${DateTime.now().millisecondsSinceEpoch}');
 
       // Yazma testi - 8 saniye timeout ile
       await testDoc.set(testData).timeout(
-        const Duration(seconds: 8),
-        onTimeout: () => throw TimeoutException('Firestore yazma testi zaman aşımı'),
-      );
+            const Duration(seconds: 8),
+            onTimeout: () =>
+                throw TimeoutException('Firestore yazma testi zaman aşımı'),
+          );
 
       // Silme testi - 3 saniye timeout ile
       await testDoc.delete().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => throw TimeoutException('Firestore silme testi zaman aşımı'),
-      );
+            const Duration(seconds: 3),
+            onTimeout: () =>
+                throw TimeoutException('Firestore silme testi zaman aşımı'),
+          );
 
       _logService.logInfo('UserService', 'Firestore bağlantı testi başarılı');
       return true;
     } catch (e) {
-      _logService.logError('UserService', 'Firestore bağlantı testi başarısız: $e', null);
+      _logService.logError(
+          'UserService', 'Firestore bağlantı testi başarısız: $e', null);
       return false;
     }
   }
 
-
-  // Kullanıcıyı sil
+  // Kullanıcı silme
   Future<void> deleteUser(String userId) async {
     try {
-      // Önce Firestore'dan kullanıcı bilgilerini sil
+      // Performans izleme
+      final Trace trace = FirebasePerformance.instance.newTrace('deleteUser');
+      await trace.start();
+
+      // Firestore'dan kullanıcı verisini sil
       await _firestore.collection('users').doc(userId).delete();
 
-      // Eğer mevcut kullanıcı ise, Firebase Auth'dan da sil
-      if (_auth.currentUser?.uid == userId) {
-        await _auth.currentUser?.delete();
-      }
+      // Firebase Auth'dan kullanıcıyı sil (admin işlemi)
+      // Not: Bu işlem için Firebase Functions kullanılması daha güvenlidir
+      // Burada sadece Firestore verisi silinecek
+
+      await trace.stop();
+      _logService.logInfo('UserService', 'Kullanıcı silindi: $userId');
     } catch (e) {
-      _logService.logError(
-          'UserService', 'Kullanıcı silinirken hata: $e', null);
+      _logService.logError('UserService', 'Kullanıcı silme hatası: $e', null);
       rethrow;
     }
   }

@@ -82,6 +82,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               icon: const Icon(Icons.save),
               onPressed: _saveCustomer,
             ),
+          // Silme butonu
+          if (!_isEditing)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: _showDeleteConfirmation,
+            ),
         ],
       ),
       body: _isLoading
@@ -653,5 +659,56 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         ],
       ),
     );
+  }
+
+  // Silme onayı diyaloğu
+  Future<void> _showDeleteConfirmation() async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Müşteri Sil'),
+        content: Text(
+            '${_customer.name} ${_customer.surname} müşterisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteCustomer();
+            },
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Müşteri silme işlemi
+  Future<void> _deleteCustomer() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_customer.id == null) {
+        throw Exception('Müşteri ID bulunamadı');
+      }
+
+      await _customerService.deleteCustomer(_customer.id!);
+
+      ToastHelper.showSuccessToast(
+          context, '${_customer.name} ${_customer.surname} müşterisi silindi');
+
+      // Müşteri listesi sayfasına geri dön
+      Navigator.pop(context, true); // Silme işlemi başarılı olduğunu belirt
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ToastHelper.showErrorToast(context, 'Müşteri silinemedi: $e');
+    }
   }
 }

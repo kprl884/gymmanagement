@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../services/user_service.dart';
+import '../../utils/toast_helper.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({Key? key}) : super(key: key);
@@ -27,32 +28,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     });
 
     try {
-      _currentUser = await _userService.getCurrentUserData();
-      _users = await _userService.getAllUsers();
+      final currentUser = await _userService.getCurrentUserData();
+      final users = await _userService.getAllUsers();
 
-      // Kendimizi listeden çıkaralım
-      if (_currentUser != null) {
-        _users = _users.where((user) => user.id != _currentUser!.id).toList();
-      }
-
-      // Kullanıcıları role göre sıralayalım
-      _users.sort((a, b) {
-        final roleOrder = {
-          UserRole.admin: 0,
-          UserRole.staff: 1,
-          UserRole.customer: 2,
-        };
-
-        return roleOrder[a.role]!.compareTo(roleOrder[b.role]!);
+      setState(() {
+        _currentUser = currentUser;
+        _users = users;
+        _isLoading = false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kullanıcılar yüklenirken hata oluştu: $e')),
-      );
-    } finally {
       setState(() {
         _isLoading = false;
       });
+      if (mounted) {
+        ToastHelper.showErrorToast(
+            context, 'Kullanıcılar yüklenirken hata: $e');
+      }
     }
   }
 
@@ -398,6 +389,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   itemCount: _users.length,
                   itemBuilder: (context, index) {
                     final user = _users[index];
+                    final isCurrentUser = _currentUser?.id == user.id;
+
                     return Card(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -465,36 +458,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ),
                           ],
                         ),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit),
-                                  SizedBox(width: 8),
-                                  Text('Düzenle'),
-                                ],
-                              ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _showEditUserDialog(user),
                             ),
-                            const PopupMenuItem(
-                              value: 'reset_password',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.lock_reset),
-                                  SizedBox(width: 8),
-                                  Text('Şifre Sıfırla'),
-                                ],
+                            if (!isCurrentUser)
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _showDeleteConfirmation(user),
                               ),
-                            ),
                           ],
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showEditUserDialog(user);
-                            } else if (value == 'reset_password') {
-                              _resetPassword(user);
-                            }
-                          },
                         ),
                       ),
                     );
@@ -505,5 +482,56 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  Future<void> _showDeleteConfirmation(AppUser user) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kullanıcı Sil'),
+        content: Text(
+            '${user.name} kullanıcısını silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteUser(user);
+            },
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteUser(AppUser user) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _userService.deleteUser(user.id!);
+
+      setState(() {
+        _users.removeWhere((u) => u.id == user.id);
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ToastHelper.showSuccessToast(
+            context, '${user.name} kullanıcısı silindi');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ToastHelper.showErrorToast(context, 'Kullanıcı silinemedi: $e');
+      }
+    }
   }
 }

@@ -18,210 +18,315 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   late Customer _customer;
   final CustomerService _customerService = CustomerService();
   bool _isLoading = false;
+  bool _isEditing = false;
+
+  // Form kontrolcüleri
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _surnameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _ageController;
+  late TextEditingController _notesController;
+  late int _subscriptionMonths;
+  late PaymentType _paymentType;
+  late MembershipStatus _status;
 
   @override
   void initState() {
     super.initState();
     _customer = widget.customer;
+
+    // Kontrolcüleri başlat
+    _nameController = TextEditingController(text: _customer.name);
+    _surnameController = TextEditingController(text: _customer.surname);
+    _phoneController = TextEditingController(text: _customer.phone);
+    _emailController = TextEditingController(text: _customer.email);
+    _ageController = TextEditingController(text: _customer.age.toString());
+    _notesController = TextEditingController(text: _customer.notes ?? '');
+    _subscriptionMonths = _customer.subscriptionMonths;
+    _paymentType = _customer.paymentType;
+    _status = _customer.status;
   }
 
-  Future<void> _updateCustomer() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final updatedCustomer = _customer.copyWith(
-        status: MembershipStatus.active,
-      );
-
-      await _customerService.updateCustomer(updatedCustomer);
-
-      setState(() {
-        _customer = updatedCustomer;
-        _isLoading = false;
-      });
-
-      ToastHelper.showSuccessToast(context, 'Müşteri bilgileri güncellendi');
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
-    }
+  @override
+  void dispose() {
+    // Kontrolcüleri temizle
+    _nameController.dispose();
+    _surnameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _ageController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd.MM.yyyy');
-
     return Scaffold(
       appBar: AppBar(
         title: Text('${_customer.name} ${_customer.surname}'),
         actions: [
+          // Düzenleme modunu aç/kapat
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: Icon(_isEditing ? Icons.cancel : Icons.edit),
             onPressed: () {
-              // Müşteri düzenleme ekranına git
+              setState(() {
+                _isEditing = !_isEditing;
+              });
             },
           ),
+          // Düzenleme modunda kaydet butonu
+          if (_isEditing)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveCustomer,
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Temel Bilgiler Kartı
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Temel Bilgiler',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          _buildInfoRow('Ad', _customer.name),
-                          _buildInfoRow('Soyad', _customer.surname),
-                          _buildInfoRow('Telefon', _customer.phone),
-                          _buildInfoRow('E-posta', _customer.email),
-                          _buildInfoRow('Yaş', _customer.age.toString()),
-                          _buildInfoRow(
-                            'Kayıt Tarihi',
-                            dateFormat.format(_customer.registrationDate),
-                          ),
-                          _buildInfoRow(
-                            'Durum',
-                            _customer.isActive ? 'Aktif' : 'Pasif',
-                            valueColor:
-                                _customer.isActive ? Colors.green : Colors.red,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Üyelik Bilgileri Kartı
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Üyelik Bilgileri',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          _buildInfoRow(
-                            'Abonelik Süresi',
-                            '${_customer.subscriptionMonths} ay',
-                          ),
-                          _buildInfoRow(
-                            'Ödeme Tipi',
-                            _customer.paymentType == PaymentType.cash
-                                ? 'Peşin'
-                                : 'Taksitli',
-                            valueColor:
-                                _customer.paymentType == PaymentType.cash
-                                    ? Colors.green
-                                    : Colors.orange,
-                          ),
-                          _buildInfoRow(
-                            'Ödeme Durumu',
-                            _customer.paymentType == PaymentType.cash
-                                ? 'Tamamlandı'
-                                : '${_customer.paidMonths.length}/${_customer.subscriptionMonths} ay ödendi',
-                            valueColor: _customer.paidMonths.length ==
-                                    _customer.subscriptionMonths
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Ödenen aylar bölümü
-                  if (_customer.paymentType == PaymentType.installment)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Ödenen Aylar',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Divider(),
-
-                            // Ödenen ayları göster
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: List.generate(
-                                  _customer.subscriptionMonths, (index) {
-                                // Kayıt tarihinden itibaren ayları hesapla
-                                final month = DateTime(
-                                  _customer.registrationDate.year,
-                                  _customer.registrationDate.month + index,
-                                  1,
-                                );
-                                final monthName =
-                                    DateFormat('MMMM yyyy', 'tr_TR')
-                                        .format(month);
-
-                                // Bu ay ödenmiş mi kontrol et
-                                bool isPaid = _customer.paidMonths.any(
-                                    (paidMonth) =>
-                                        paidMonth.year == month.year &&
-                                        paidMonth.month == month.month);
-
-                                return FilterChip(
-                                  label: Text(monthName),
-                                  selected: isPaid,
-                                  onSelected: (bool selected) {
-                                    _updatePaidMonth(month, selected);
-                                  },
-                                  selectedColor: Colors.green[100],
-                                  checkmarkColor: Colors.green,
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  const SizedBox(height: 12),
-                ],
-              ),
+              child: _isEditing ? _buildEditForm() : _buildCustomerDetails(),
             ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+  Widget _buildCustomerDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Müşteri bilgileri kartı
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Kişisel Bilgiler',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(),
+                _buildInfoRow('Ad', _customer.name),
+                _buildInfoRow('Soyad', _customer.surname),
+                _buildInfoRow('Telefon', _customer.phone),
+                _buildInfoRow('E-posta', _customer.email),
+                _buildInfoRow('Yaş', _customer.age.toString()),
+                if (_customer.notes != null && _customer.notes!.isNotEmpty)
+                  _buildInfoRow('Notlar', _customer.notes!),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Üyelik bilgileri kartı
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Üyelik Bilgileri',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(),
+                _buildInfoRow(
+                    'Kayıt Tarihi',
+                    DateFormat('dd.MM.yyyy')
+                        .format(_customer.registrationDate)),
+                _buildInfoRow(
+                    'Üyelik Durumu', _getStatusText(_customer.status)),
+                _buildInfoRow(
+                    'Ödeme Tipi',
+                    _customer.paymentType == PaymentType.cash
+                        ? 'Peşin'
+                        : 'Taksitli'),
+                _buildInfoRow(
+                    'Abonelik Süresi', '${_customer.subscriptionMonths} ay'),
+                if (_customer.paymentType == PaymentType.installment)
+                  _buildInfoRow('Ödenen Taksitler',
+                      '${_customer.paidMonths.length}/${_customer.subscriptionMonths}'),
+                if (_customer.lastVisitDate != null)
+                  _buildInfoRow(
+                      'Son Ziyaret',
+                      DateFormat('dd.MM.yyyy')
+                          .format(_customer.lastVisitDate!)),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Taksit durumu kartı
+        if (_customer.paymentType == PaymentType.installment)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Taksit Durumu',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Divider(),
+                  _buildInstallmentStatus(),
+                ],
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 16),
+
+        // Ödeme geçmişi kartı
+        if (_customer.paymentType == PaymentType.installment)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ödeme Geçmişi',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Divider(),
+                  ..._buildPaymentHistory(),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInstallmentStatus() {
+    // Ödenen ve ödenmeyen taksitleri göster
+    final paidCount = _customer.paidMonths.length;
+    final totalCount = _customer.subscriptionMonths;
+    final unpaidCount = totalCount - paidCount;
+
+    return Column(
+      children: [
+        // İlerleme çubuğu
+        LinearProgressIndicator(
+          value: paidCount / totalCount,
+          backgroundColor: Colors.grey[300],
+          valueColor: AlwaysStoppedAnimation<Color>(
+            paidCount == totalCount ? Colors.green : Colors.orange,
+          ),
+          minHeight: 10,
+        ),
+        const SizedBox(height: 16),
+
+        // Taksit durumu özeti
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatusItem('Toplam', totalCount.toString(), Colors.blue),
+            _buildStatusItem('Ödenen', paidCount.toString(), Colors.green),
+            _buildStatusItem('Kalan', unpaidCount.toString(), Colors.orange),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Taksit listesi
+        ...List.generate(totalCount, (index) {
+          final installmentNumber = index + 1;
+          final isPaid = index < paidCount;
+
+          // Ödeme tarihi hesapla (kayıt tarihinden itibaren aylık)
+          final dueDate = DateTime(
+            _customer.registrationDate.year,
+            _customer.registrationDate.month + index,
+            _customer.registrationDate.day,
+          );
+
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isPaid ? Colors.green : Colors.grey,
+              child: Icon(
+                isPaid ? Icons.check : Icons.hourglass_empty,
+                color: Colors.white,
+              ),
+            ),
+            title: Text('$installmentNumber. Taksit'),
+            subtitle: Text('Vade: ${DateFormat('dd.MM.yyyy').format(dueDate)}'),
+            trailing: isPaid
+                ? const Icon(Icons.done_all, color: Colors.green)
+                : TextButton(
+                    onPressed: () => _recordSpecificPayment(index),
+                    child: const Text('Öde'),
+                  ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildStatusItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildPaymentHistory() {
+    if (_customer.paidMonths.isEmpty) {
+      return [const Text('Henüz ödeme kaydı yok.')];
+    }
+
+    // Ödeme tarihlerini sırala (en yeni en üstte)
+    final sortedPayments = List<DateTime>.from(_customer.paidMonths)
+      ..sort((a, b) => b.compareTo(a));
+
+    return sortedPayments.map((date) {
+      return ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: Colors.green,
+          child: Icon(Icons.payment, color: Colors.white, size: 16),
+        ),
+        title: Text('${sortedPayments.indexOf(date) + 1}. Taksit Ödemesi'),
+        subtitle: Text(DateFormat('dd.MM.yyyy').format(date)),
+      );
+    }).toList();
+  }
+
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -235,9 +340,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           ),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: valueColor,
             ),
           ),
         ],
@@ -245,27 +349,30 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // Ödenen ay güncelleme metodu
-  Future<void> _updatePaidMonth(DateTime month, bool isPaid) async {
+  String _getStatusText(MembershipStatus status) {
+    switch (status) {
+      case MembershipStatus.active:
+        return 'Aktif';
+      case MembershipStatus.expired:
+        return 'Süresi Dolmuş';
+      case MembershipStatus.pending:
+        return 'Beklemede';
+      case MembershipStatus.cancelled:
+        return 'İptal Edilmiş';
+      default:
+        return 'Bilinmiyor';
+    }
+  }
+
+  Future<void> _recordPayment() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Mevcut ödenen aylar listesini kopyala
-      List<DateTime> updatedPaidMonths = List.from(_customer.paidMonths);
-
-      if (isPaid) {
-        // Ay ödendi olarak işaretlendiyse ve listede yoksa ekle
-        if (!updatedPaidMonths.any((paidMonth) =>
-            paidMonth.year == month.year && paidMonth.month == month.month)) {
-          updatedPaidMonths.add(DateTime(month.year, month.month, 1));
-        }
-      } else {
-        // Ay ödenmedi olarak işaretlendiyse ve listede varsa çıkar
-        updatedPaidMonths.removeWhere((paidMonth) =>
-            paidMonth.year == month.year && paidMonth.month == month.month);
-      }
+      // Yeni ödeme tarihi olarak bugünü ekle
+      final updatedPaidMonths = List<DateTime>.from(_customer.paidMonths)
+        ..add(DateTime.now());
 
       // Firestore'da güncelle
       await _customerService.updatePaidMonths(_customer.id!, updatedPaidMonths);
@@ -283,5 +390,246 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       });
       ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
     }
+  }
+
+  Future<void> _recordSpecificPayment(int installmentIndex) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Ödeme tarihlerini sırala
+      final sortedPayments = List<DateTime>.from(_customer.paidMonths)
+        ..sort((a, b) => a.compareTo(b));
+
+      // Yeni ödeme tarihi olarak bugünü ekle
+      final updatedPaidMonths = sortedPayments..add(DateTime.now());
+
+      // Firestore'da güncelle
+      await _customerService.updatePaidMonths(_customer.id!, updatedPaidMonths);
+
+      // Müşteri nesnesini güncelle
+      setState(() {
+        _customer = _customer.copyWith(paidMonths: updatedPaidMonths);
+        _isLoading = false;
+      });
+
+      ToastHelper.showSuccessToast(
+          context, '${installmentIndex + 1}. taksit ödemesi kaydedildi');
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ToastHelper.showErrorToast(context, 'Ödeme kaydedilemedi: $e');
+    }
+  }
+
+  Future<void> _saveCustomer() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Müşteri nesnesini güncelle
+        final updatedCustomer = _customer.copyWith(
+          name: _nameController.text,
+          surname: _surnameController.text,
+          phone: _phoneController.text,
+          email: _emailController.text,
+          age: int.parse(_ageController.text),
+          notes: _notesController.text.isEmpty ? null : _notesController.text,
+          status: _status,
+          paymentType: _paymentType,
+          subscriptionMonths: _subscriptionMonths,
+        );
+
+        // Firestore'da güncelle
+        await _customerService.updateCustomer(updatedCustomer);
+
+        // State'i güncelle
+        setState(() {
+          _customer = updatedCustomer;
+          _isLoading = false;
+          _isEditing = false;
+        });
+
+        ToastHelper.showSuccessToast(context, 'Müşteri bilgileri güncellendi');
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        ToastHelper.showErrorToast(context, 'Güncelleme başarısız: $e');
+      }
+    }
+  }
+
+  Widget _buildEditForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Kişisel bilgiler kartı
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kişisel Bilgiler',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Divider(),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Ad'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Ad boş olamaz';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _surnameController,
+                    decoration: const InputDecoration(labelText: 'Soyad'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Soyad boş olamaz';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(labelText: 'Telefon'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Telefon boş olamaz';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(labelText: 'E-posta'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'E-posta boş olamaz';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _ageController,
+                    decoration: const InputDecoration(labelText: 'Yaş'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Yaş boş olamaz';
+                      }
+                      if (int.tryParse(value) == null) {
+                        return 'Geçerli bir yaş giriniz';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(labelText: 'Notlar'),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Üyelik bilgileri kartı
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Üyelik Bilgileri',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Divider(),
+                  DropdownButtonFormField<MembershipStatus>(
+                    value: _status,
+                    decoration: const InputDecoration(
+                      labelText: 'Üyelik Durumu',
+                    ),
+                    items: MembershipStatus.values.map((status) {
+                      return DropdownMenuItem<MembershipStatus>(
+                        value: status,
+                        child: Text(_getStatusText(status)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _status = value;
+                        });
+                      }
+                    },
+                  ),
+                  DropdownButtonFormField<PaymentType>(
+                    value: _paymentType,
+                    decoration: const InputDecoration(
+                      labelText: 'Ödeme Tipi',
+                    ),
+                    items: PaymentType.values.map((type) {
+                      return DropdownMenuItem<PaymentType>(
+                        value: type,
+                        child: Text(
+                            type == PaymentType.cash ? 'Peşin' : 'Taksitli'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _paymentType = value;
+                        });
+                      }
+                    },
+                  ),
+                  DropdownButtonFormField<int>(
+                    value: _subscriptionMonths,
+                    decoration: const InputDecoration(
+                      labelText: 'Abonelik Süresi',
+                    ),
+                    items: [1, 3, 6, 12, 24].map((months) {
+                      return DropdownMenuItem<int>(
+                        value: months,
+                        child: Text('$months ay'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _subscriptionMonths = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

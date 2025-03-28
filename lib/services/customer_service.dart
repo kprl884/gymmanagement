@@ -50,13 +50,16 @@ class CustomerService {
   // Müşteri güncelle
   Future<void> updateCustomer(Customer customer) async {
     try {
-      await _firestore
-          .collection('customers')
-          .doc(customer.id)
-          .update(customer.toFirestore());
+      if (customer.id == null) {
+        throw Exception('Müşteri ID boş olamaz');
+      }
+
+      await _firestore.collection('customers').doc(customer.id).update(
+            customer.toFirestore(),
+          );
     } catch (e) {
       _logService.logError(
-          'CustomerService', 'Müşteri güncelleme hatası: $e', null);
+          'CustomerService', 'Müşteri güncellenirken hata: $e', null);
       rethrow;
     }
   }

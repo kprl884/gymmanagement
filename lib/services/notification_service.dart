@@ -184,6 +184,27 @@ class NotificationService {
     }
   }
 
+  // Ödeme hatırlatıcılarını planla
+  Future<void> scheduleAllPaymentReminders(List<Customer> customers) async {
+    try {
+      final now = DateTime.now();
+      final currentMonthKey = DateFormat('MM-yyyy').format(now);
+
+      for (final customer in customers) {
+        // Taksitli ödeme yapan müşteriler için
+        if (customer.paymentType == PaymentType.installment) {
+          // Ödenmemiş aylar için hatırlatma gönder
+          if (customer.paidMonths.length < customer.subscriptionMonths) {
+            await schedulePaymentReminder(customer, currentMonthKey);
+          }
+        }
+      }
+    } catch (e) {
+      _logService.logError('NotificationService',
+          'Ödeme hatırlatıcıları planlanırken hata: $e', null);
+    }
+  }
+
   // Üyelik hatırlatıcılarını planla
   Future<void> scheduleAllMembershipReminders() async {
     try {

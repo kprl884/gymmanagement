@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer.dart';
 import '../services/notification_service.dart';
+import '../services/customer_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({Key? key}) : super(key: key);
@@ -14,6 +15,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
   final NotificationService _notificationService = NotificationService();
+  final CustomerService _customerService = CustomerService();
   bool _isLoading = false;
   bool _notificationsEnabled = false;
 
@@ -53,10 +55,7 @@ class _NotificationSettingsScreenState
 
     try {
       // Tüm müşterileri getir
-      final snapshot =
-          await FirebaseFirestore.instance.collection('customers').get();
-      final customers =
-          snapshot.docs.map((doc) => Customer.fromFirestore(doc)).toList();
+      final customers = await _customerService.getAllCustomers();
 
       // Tüm bildirimleri güncelle
       await _notificationService.scheduleAllPaymentReminders(customers);
@@ -66,7 +65,7 @@ class _NotificationSettingsScreenState
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata oluştu: $e')),
+        SnackBar(content: Text('Bildirimler güncellenirken hata: $e')),
       );
     } finally {
       setState(() {

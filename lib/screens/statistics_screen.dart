@@ -52,28 +52,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           .where((c) => c.registrationDate.isAfter(firstDayOfMonth))
           .length;
 
-      // Toplam gelir (aylık ücret x üyelik süresi)
-      const monthlyFee = 200.0; // Örnek aylık ücret
-      _totalRevenue = 0;
-      for (var customer in customers) {
-        if (customer.membershipStartDate != null &&
-            customer.membershipEndDate != null) {
-          // Ay farkını hesapla
-          final months = (customer.membershipEndDate!.year -
-                      customer.membershipStartDate!.year) *
-                  12 +
-              customer.membershipEndDate!.month -
-              customer.membershipStartDate!.month;
-          _totalRevenue += months * monthlyFee;
-        }
-      }
+      // Toplam gelir hesaplama
+      _calculateTotalRevenue();
 
-      // Aylara göre müşteri dağılımı
-      _monthlyCustomers = {};
-      for (var customer in customers) {
-        final month = DateFormat('MMMM yyyy').format(customer.registrationDate);
-        _monthlyCustomers[month] = (_monthlyCustomers[month] ?? 0) + 1;
-      }
+      // Aylık müşteri dağılımını hesapla
+      _calculateMonthlyCustomers();
 
       setState(() {
         _isLoading = false;
@@ -82,9 +65,62 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('İstatistikler yüklenirken hata: $e')),
-      );
+      print('İstatistikler yüklenirken hata: $e');
+    }
+  }
+
+  // Toplam geliri hesapla
+  void _calculateTotalRevenue() async {
+    try {
+      final customers = await _customerService.getAllCustomers();
+      final monthlyFee = 200; // Aylık ücret (örnek değer)
+
+      setState(() {
+        _totalRevenue = 0;
+        for (var customer in customers) {
+          // Abonelik süresine göre geliri hesapla
+          _totalRevenue += customer.subscriptionMonths * monthlyFee;
+        }
+      });
+    } catch (e) {
+      print('Gelir hesaplama hatası: $e');
+    }
+  }
+
+  // Aylık müşteri dağılımını hesapla
+  void _calculateMonthlyCustomers() async {
+    try {
+      final customers = await _customerService.getAllCustomers();
+      final Map<String, int> monthlyData = {};
+
+      // Son 6 ayı hesapla
+      final now = DateTime.now();
+      for (int i = 0; i < 6; i++) {
+        final month = DateTime(now.year, now.month - i, 1);
+        final monthKey = DateFormat('MMMM yyyy', 'tr_TR').format(month);
+        monthlyData[monthKey] = 0;
+      }
+
+      // Her müşteri için kayıt ayını bul ve sayıyı artır
+      for (var customer in customers) {
+        final registrationMonth = DateTime(
+          customer.registrationDate.year,
+          customer.registrationDate.month,
+          1,
+        );
+        final monthKey =
+            DateFormat('MMMM yyyy', 'tr_TR').format(registrationMonth);
+
+        if (monthlyData.containsKey(monthKey)) {
+          monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + 1;
+        }
+      }
+
+      setState(() {
+        _monthlyCustomers = monthlyData;
+      });
+    } catch (e) {
+      print('Aylık müşteri dağılımı hesaplama hatası: $e');
     }
   }
 
@@ -145,7 +181,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Aylık müşteri dağılımı
+                    // Aylık müşteri dağılımı kartı
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),

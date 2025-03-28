@@ -198,53 +198,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         title: const Text('Yeni Kullanıcı Ekle'),
         content: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Ad Soyad',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'E-posta',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Şifre',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
-              const Text('Rol:'),
-              StatefulBuilder(
-                builder: (context, setState) => Column(
-                  children: UserRole.values.map((role) {
-                    return RadioListTile<UserRole>(
-                      title: Text(_getRoleName(role)),
-                      value: role,
-                      groupValue: selectedRole,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedRole = value!;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+            // ... mevcut içerik
           ),
         ),
         actions: [
@@ -267,29 +221,40 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 return;
               }
 
+              // Dialog'u kapattıktan sonra doğrudan Navigator.pop'ı çağırmak yerine
+              // kullanıcı ekleme işlemi için bilgileri saklayın
+              final userEmail = emailController.text.trim();
+              final userPassword = passwordController.text;
+              final userName = nameController.text.trim();
+              final userRole = selectedRole;
+
+              // SONRA dialog'u kapatın
               Navigator.pop(context);
 
+              // Ana widget'ta işlemleri yapın
               setState(() {
                 _isLoading = true;
               });
 
               try {
                 await _userService.registerWithEmailAndPassword(
-                  emailController.text.trim(),
-                  passwordController.text,
-                  nameController.text.trim(),
-                  selectedRole,
+                  userEmail,
+                  userPassword,
+                  userName,
+                  userRole,
                 );
 
                 // Kullanıcı listesini yenile
                 await _loadUsers();
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Kullanıcı başarıyla eklendi'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                if (mounted) { // mounted kontrolü ekleyin
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Kullanıcı başarıyla eklendi'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               } catch (e) {
                 String errorMessage = 'Kullanıcı eklenirken hata oluştu';
 
@@ -301,16 +266,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   errorMessage = 'Şifre çok zayıf';
                 }
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(errorMessage),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) { // mounted kontrolü ekleyin
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(errorMessage),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               } finally {
-                setState(() {
-                  _isLoading = false;
-                });
+                if (mounted) { // mounted kontrolü ekleyin
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
               }
             },
             child: const Text('Ekle'),

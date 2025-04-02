@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../services/customer_service.dart';
 import '../utils/toast_helper.dart';
+import '../utils/multiple_click_handler.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -460,7 +461,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           phone: _phoneController.text,
           email: _emailController.text,
           age: int.parse(_ageController.text),
-          registrationDate: _customer.registrationDate, // Orijinal kayıt tarihini koru
+          registrationDate:
+              _customer.registrationDate, // Orijinal kayıt tarihini koru
           subscriptionMonths: _subscriptionMonths,
           paymentType: _paymentType,
           paidMonths: _customer.paidMonths, // Mevcut ödeme bilgilerini koru
@@ -485,14 +487,16 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           });
 
           // Başarı mesajını göster
-          ToastHelper.showSuccessToast(context, 'Müşteri başarıyla güncellendi');
+          ToastHelper.showSuccessToast(
+              context, 'Müşteri başarıyla güncellendi');
         }
       } catch (e) {
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
-          ToastHelper.showErrorToast(context, 'Müşteri güncellenirken hata: $e');
+          ToastHelper.showErrorToast(
+              context, 'Müşteri güncellenirken hata: $e');
         }
       }
     }
@@ -649,20 +653,22 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   DropdownButtonFormField<int>(
                     value: _subscriptionMonths,
                     decoration: const InputDecoration(
-                      labelText: 'Abonelik Süresi',
+                      labelText: 'Abonelik Süresi (Ay)',
+                      border: OutlineInputBorder(),
                     ),
-                    items: [1, 3, 6, 12, 24].map((months) {
-                      return DropdownMenuItem<int>(
-                        value: months,
-                        child: Text('$months ay'),
-                      );
-                    }).toList(),
+                    items: List.generate(12,
+                            (index) => index + 1) // This generates 1-12 months
+                        .map((month) => DropdownMenuItem<int>(
+                              value: month,
+                              child: Text('$month ay'),
+                            ))
+                        .toList(),
                     onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
+                      setState(() {
+                        if (value != null) {
                           _subscriptionMonths = value;
-                        });
-                      }
+                        }
+                      });
                     },
                   ),
                 ],

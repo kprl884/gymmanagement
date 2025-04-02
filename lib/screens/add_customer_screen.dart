@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../services/customer_service.dart';
 import '../utils/toast_helper.dart';
+import '../utils/multiple_click_handler.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({Key? key}) : super(key: key);
@@ -423,7 +424,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
                     const SizedBox(height: 24),
 
-                    ElevatedButton(
+                    SingleClickElevatedButton(
                       onPressed: _saveCustomer,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../services/equipment_service.dart';
-import '../utils/toast_helper.dart';
 
 class EquipmentListScreen extends StatefulWidget {
   const EquipmentListScreen({Key? key}) : super(key: key);

@@ -5,7 +5,6 @@ import '../../services/log_service.dart';
 import '../../utils/toast_helper.dart';
 import 'register_screen.dart';
 import '../home_screen.dart';
-import '../../services/connectivity_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -207,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Lütfen e-posta adresinizi girin';
                           }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                          if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
                               .hasMatch(value)) {
                             return 'Geçerli bir e-posta adresi girin';
                           }

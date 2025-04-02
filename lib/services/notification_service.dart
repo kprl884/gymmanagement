@@ -10,6 +10,7 @@ import 'log_service.dart';
 import 'dart:async';
 import 'dart:math';
 import '../services/customer_service.dart';
+import '../services/sms_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -20,6 +21,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   final LogService _logService = LogService();
   final CustomerService _customerService = CustomerService();
+  final SmsService _smsService = SmsService();
 
   final BehaviorSubject<String?> onNotificationClick = BehaviorSubject();
 
@@ -321,5 +323,82 @@ class NotificationService {
         sound: true,
       );
     }
+  }
+
+  // SMS ile ödeme hatırlatması
+  Future<bool> sendPaymentReminderSms(Customer customer) async {
+    try {
+      if (customer.phone.isEmpty) {
+        _logService.logWarning('NotificationService',
+            'Müşterinin telefon numarası yok: ${customer.id}');
+        return false;
+      }
+
+      // Son ödeme tarihini bul
+      final lastPaymentDate = findLastPaymentDate(customer);
+      if (lastPaymentDate == null) {
+        _logService.logWarning('NotificationService',
+            'Müşterinin ödeme geçmişi yok: ${customer.id}');
+        return false;
+      }
+
+      // Bir sonraki ödeme tarihini hesapla
+      final nextPaymentDate = calculateNextPaymentDate(lastPaymentDate);
+
+      // Kalan gün sayısını hesapla
+      final daysDifference = nextPaymentDate.difference(DateTime.now()).inDays;
+
+      // SMS mesajı
+      final message = _createPaymentReminderMessage(
+          customer, nextPaymentDate, daysDifference);
+
+      // SMS gönder
+      return await _smsService.sendTestSms(customer.phone, message);
+    } catch (e) {
+      _logService.logError(
+          'NotificationService', 'SMS gönderme hatası: $e', null);
+      return false;
+    }
+  }
+
+  // Ödeme hatırlatma mesajı oluştur
+  String _createPaymentReminderMessage(
+      Customer customer, DateTime paymentDate, int daysLeft) {
+    final dateFormat = DateFormat('dd.MM.yyyy');
+    final formattedDate = dateFormat.format(paymentDate);
+
+    String message = 'Sayın ${customer.name} ${customer.surname}, ';
+
+    if (daysLeft <= 0) {
+      message +=
+          'spor salonu üyelik ödemeniz bugün ($formattedDate) yapılması gerekmektedir.';
+    } else if (daysLeft == 1) {
+      message +=
+          'spor salonu üyelik ödemenize 1 gün kalmıştır ($formattedDate).';
+    } else {
+      message +=
+          'spor salonu üyelik ödemenize $daysLeft gün kalmıştır ($formattedDate).';
+    }
+
+    message += ' İyi günler dileriz.';
+    return message;
+  }
+
+  // Son ödeme tarihini bul
+  DateTime? findLastPaymentDate(Customer customer) {
+    if (customer.paidMonths.isEmpty) return null;
+
+    final sortedPayments = List<DateTime>.from(customer.paidMonths)
+      ..sort((a, b) => b.compareTo(a));
+    return sortedPayments.first;
+  }
+
+  // Bir sonraki ödeme tarihini hesapla
+  DateTime calculateNextPaymentDate(DateTime lastPaymentDate) {
+    return DateTime(
+      lastPaymentDate.year,
+      lastPaymentDate.month + 1,
+      lastPaymentDate.day,
+    );
   }
 }

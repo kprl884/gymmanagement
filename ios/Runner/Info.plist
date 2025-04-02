@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>SMS gönderimi için erişim gerekiyor</string>
+	<key>NSContactsUsageDescription</key>
+	<string>SMS gönderimi için erişim gerekiyor</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This app needs to send SMS messages for payment reminders</string>
 </dict>
 </plist>

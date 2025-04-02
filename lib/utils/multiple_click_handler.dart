@@ -43,7 +43,7 @@ class MultipleClickHandler {
 
 /// A single-click ElevatedButton that prevents multiple rapid clicks
 class SingleClickElevatedButton extends StatelessWidget {
-  final VoidCallback onPressed;
+  final void Function()? onPressed;
   final Widget child;
   final ButtonStyle? style;
   final FocusNode? focusNode;
@@ -67,7 +67,7 @@ class SingleClickElevatedButton extends StatelessWidget {
     final clickHandler = MultipleClickHandler();
 
     return ElevatedButton(
-      onPressed: () => clickHandler.processEvent(onPressed),
+      onPressed: () => clickHandler.processEvent(() => onPressed?.call()),
       onLongPress: onLongPress,
       style: style,
       focusNode: focusNode,

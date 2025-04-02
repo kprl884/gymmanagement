@@ -8,7 +8,6 @@ import 'equipment_list_screen.dart';
 import 'fitness_plan_list_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
-import 'profile_screen.dart';
 import 'admin/user_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {

@@ -4,6 +4,7 @@ import 'admin/user_management_screen.dart';
 import '../services/user_service.dart';
 import '../models/user.dart';
 import '../utils/toast_helper.dart';
+import 'sms_reminder_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -165,6 +166,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       applicationName: 'Müşteri Yönetimi',
                       applicationVersion: '1.0.0',
                       applicationLegalese: '© 2023 Tüm Hakları Saklıdır',
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.sms),
+                  title: const Text('SMS Hatırlatmaları'),
+                  subtitle: const Text('Ödeme hatırlatma mesajları ayarları'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SmsReminderSettingsScreen(),
+                      ),
                     );
                   },
                 ),

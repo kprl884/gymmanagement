@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../services/customer_service.dart';
 import '../utils/toast_helper.dart';
-import '../utils/multiple_click_handler.dart';
+import '../services/notification_service.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -18,6 +18,7 @@ class CustomerDetailScreen extends StatefulWidget {
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   late Customer _customer;
   final CustomerService _customerService = CustomerService();
+  final NotificationService _notificationService = NotificationService();
   bool _isLoading = false;
   bool _isEditing = false;
 
@@ -232,6 +233,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ),
             ),
           ),
+
+        const SizedBox(height: 16),
+
+        // Ödeme hatırlatma SMS butonu
+        ElevatedButton(
+          onPressed: _isLoading ? null : () => _sendPaymentReminderSms(),
+          child: Text('Ödeme Hatırlatma SMS\'i Gönder'),
+        ),
       ],
     );
   }
@@ -728,6 +737,32 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         _isLoading = false;
       });
       ToastHelper.showErrorToast(context, 'Müşteri silinemedi: $e');
+    }
+  }
+
+  // SMS gönderme metodu
+  Future<void> _sendPaymentReminderSms() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success =
+          await _notificationService.sendPaymentReminderSms(_customer);
+
+      if (success) {
+        ToastHelper.showSuccessToast(
+            context, 'Ödeme hatırlatma SMS\'i gönderildi.');
+      } else {
+        ToastHelper.showErrorToast(context,
+            'SMS gönderilemedi. Telefon numarası veya izinleri kontrol edin.');
+      }
+    } catch (e) {
+      ToastHelper.showErrorToast(context, 'Hata: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 }

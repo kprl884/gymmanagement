@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/fitness_plan.dart';
 import '../services/fitness_plan_service.dart';
-import '../utils/toast_helper.dart';
 
 class FitnessPlanListScreen extends StatefulWidget {
   const FitnessPlanListScreen({Key? key}) : super(key: key);

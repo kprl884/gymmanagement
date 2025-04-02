@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/customer.dart';
 import '../services/notification_service.dart';
 import '../services/customer_service.dart';
 

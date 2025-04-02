@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth User sınıfı için import
 import 'dart:async'; // TimeoutException için
-import '../../models/user.dart';
 import '../../services/user_service.dart';
 import '../../services/log_service.dart';
 import '../../utils/toast_helper.dart';
 import '../../config/app_config.dart';
-import '../../services/connectivity_service.dart';
 import 'login_screen.dart';
 import 'dart:io';
 

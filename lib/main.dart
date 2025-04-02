@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'services/theme_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/setup_screen.dart';
+import 'services/scheduled_task_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,8 +27,8 @@ void main() async {
 
   // Firestore ayarlarını yapılandır
   FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,         // Çevrimdışı önbelleğe alma
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,  // Sınırsız önbellek
+    persistenceEnabled: true, // Çevrimdışı önbelleğe alma
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED, // Sınırsız önbellek
   );
 
   // Uygulama ilk kez çalıştırılıyor mu kontrol et
@@ -52,6 +53,13 @@ void main() async {
 
   // Tarih formatlamasını başlat
   await initializeDateFormatting('tr_TR', null);
+
+  // Scheduled task servisini başlat
+  final scheduledTaskService = ScheduledTaskService();
+  scheduledTaskService.startScheduledTasks();
+
+  // Uygulama başladığında anlık kontrol yap
+  scheduledTaskService.runImmediateChecks();
 
   runApp(
     ChangeNotifierProvider(

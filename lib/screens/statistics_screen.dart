@@ -117,7 +117,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           1,
         );
         final monthKey =
-            DateFormat('MMMM yyyy', 'tr_TR').format(registrationMonth);
+        DateFormat('MMMM yyyy', 'tr_TR').format(registrationMonth);
 
         if (monthlyData.containsKey(monthKey)) {
           monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + 1;
@@ -173,235 +173,253 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Genel bakış kartı
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Genel Bakış',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          _buildStatRow(
-                              'Toplam Müşteri', _totalCustomers.toString()),
-                          _buildStatRow(
-                              'Aktif Üyelikler', _activeCustomers.toString()),
-                          _buildStatRow('Süresi Dolmuş Üyelikler',
-                              _expiredCustomers.toString()),
-                          _buildStatRow('Bu Ay Yeni Kayıtlar',
-                              _newCustomersThisMonth.toString()),
-                          _buildStatRow(
-                            'Toplam Gelir',
-                            NumberFormat.currency(locale: 'tr_TR', symbol: '₺')
-                                .format(_totalRevenue),
-                          ),
-                        ],
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Genel bakış kartı
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Genel Bakış',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Müşteri Grafiği Kartı
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Aylık Müşteri Grafiği',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 200,
-                            child: _customerSpots.isEmpty
-                                ? const Center(child: Text('Veri yok'))
-                                : LineChart(
-                                    LineChartData(
-                                      gridData: FlGridData(show: true),
-                                      titlesData: FlTitlesData(
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            getTitlesWidget: (value, meta) {
-                                              if (value.toInt() >= 0 &&
-                                                  value.toInt() <
-                                                      _monthlyCustomers
-                                                          .length) {
-                                                final month = _monthlyCustomers
-                                                    .keys
-                                                    .toList()[value.toInt()];
-                                                return Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          top: 8.0),
-                                                  child: Text(
-                                                    month.split(' ')[
-                                                        0], // Sadece ay adını göster
-                                                    style: const TextStyle(
-                                                        fontSize: 10),
-                                                  ),
-                                                );
-                                              }
-                                              return const Text('');
-                                            },
-                                          ),
-                                        ),
-                                        leftTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                value.toInt().toString(),
-                                                style: const TextStyle(
-                                                    fontSize: 10),
-                                              );
-                                            },
-                                            reservedSize: 30,
-                                          ),
-                                        ),
-                                        topTitles: AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
-                                        ),
-                                        rightTitles: AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
-                                        ),
-                                      ),
-                                      borderData: FlBorderData(show: true),
-                                      minX: 0,
-                                      maxX: (_customerSpots.length - 1)
-                                          .toDouble(),
-                                      minY: 0,
-                                      maxY: _maxY,
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: _customerSpots,
-                                          isCurved: true,
-                                          color: Colors.blue,
-                                          barWidth: 3,
-                                          isStrokeCapRound: true,
-                                          dotData: FlDotData(show: true),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            color: Colors.blue.withOpacity(0.2),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
+                    const Divider(),
+                    _buildStatRow(
+                        'Toplam Müşteri', _totalCustomers.toString()),
+                    _buildStatRow(
+                        'Aktif Üyelikler', _activeCustomers.toString()),
+                    _buildStatRow('Süresi Dolmuş Üyelikler',
+                        _expiredCustomers.toString()),
+                    _buildStatRow('Bu Ay Yeni Kayıtlar',
+                        _newCustomersThisMonth.toString()),
+                    _buildStatRow(
+                      'Toplam Gelir',
+                      NumberFormat.currency(locale: 'tr_TR', symbol: '₺')
+                          .format(_totalRevenue),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Aylık müşteri dağılımı kartı
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Aylık Müşteri Dağılımı',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          ..._monthlyCustomers.entries
-                              .toList()
-                              .reversed // En son aydan başla
-                              .map((entry) => _buildStatRow(
-                                  entry.key, entry.value.toString()))
-                              .toList(),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Üyelik Durumu Pasta Grafiği
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Üyelik Durumu',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 200,
-                            child: _totalCustomers == 0
-                                ? const Center(child: Text('Veri yok'))
-                                : PieChart(
-                                    PieChartData(
-                                      sections: [
-                                        PieChartSectionData(
-                                          value: _activeCustomers.toDouble(),
-                                          title: 'Aktif\n${_activeCustomers}',
-                                          color: Colors.green,
-                                          radius: 80,
-                                        ),
-                                        PieChartSectionData(
-                                          value: _expiredCustomers.toDouble(),
-                                          title:
-                                              'Süresi Dolmuş\n${_expiredCustomers}',
-                                          color: Colors.red,
-                                          radius: 80,
-                                        ),
-                                        PieChartSectionData(
-                                          value: (_totalCustomers -
-                                                  _activeCustomers -
-                                                  _expiredCustomers)
-                                              .toDouble(),
-                                          title:
-                                              'Diğer\n${_totalCustomers - _activeCustomers - _expiredCustomers}',
-                                          color: Colors.grey,
-                                          radius: 80,
-                                        ),
-                                      ],
-                                      sectionsSpace: 2,
-                                      centerSpaceRadius: 0,
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            // Müşteri Grafiği Kartı
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Aylık Müşteri Grafiği',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 250, // Daha fazla alan ayır
+                      child: _customerSpots.isEmpty
+                          ? const Center(child: Text('Veri yok'))
+                          : LineChart(
+                        LineChartData(
+                          gridData: FlGridData(show: true),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 40, // Yüksekliği artır
+                                getTitlesWidget: (value, meta) {
+                                  if (value.toInt() >= 0 &&
+                                      value.toInt() <
+                                          _monthlyCustomers
+                                              .length) {
+                                    final monthNames = _monthlyCustomers
+                                        .keys
+                                        .toList();
+                                    // Doğru sıralama için indeksleri kontrol et
+                                    if (value.toInt() < monthNames.length) {
+                                      final month = monthNames[value.toInt()];
+                                      final shortMonth = month.split(' ')[0].substring(0, 3);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          shortMonth, // Ay adının kısaltması
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: const TextStyle(
+                                        fontSize: 10),
+                                  );
+                                },
+                                reservedSize: 30,
+                              ),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles:
+                              SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles:
+                              SideTitles(showTitles: false),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: true),
+                          minX: 0,
+                          maxX: (_customerSpots.length - 1)
+                              .toDouble(),
+                          minY: 0,
+                          maxY: _maxY,
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: _customerSpots,
+                              isCurved: true,
+                              color: Colors.blue,
+                              barWidth: 3,
+                              isStrokeCapRound: true,
+                              dotData: FlDotData(show: true),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                color: Colors.blue.withOpacity(0.2),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Aylık müşteri dağılımı kartı
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Aylık Müşteri Dağılımı',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(),
+                    ..._monthlyCustomers.entries
+                        .toList()
+                        .reversed // En son aydan başla
+                        .map((entry) => _buildStatRow(
+                        entry.key, entry.value.toString()))
+                        .toList(),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Üyelik Durumu Pasta Grafiği
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Üyelik Durumu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 250, // Yüksekliği artır
+                      child: _totalCustomers == 0
+                          ? const Center(child: Text('Veri yok'))
+                          : PieChart(
+                        PieChartData(
+                          sections: [
+                            PieChartSectionData(
+                              value: _activeCustomers.toDouble(),
+                              title: 'Aktif\n${_activeCustomers}',
+                              titleStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              color: Colors.green,
+                              radius: 80,
+                            ),
+                            PieChartSectionData(
+                              value: _expiredCustomers.toDouble(),
+                              title: 'Sona\nEren\n${_expiredCustomers}',
+                              titleStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              color: Colors.red,
+                              radius: 80,
+                            ),
+                            PieChartSectionData(
+                              value: (_totalCustomers -
+                                  _activeCustomers -
+                                  _expiredCustomers)
+                                  .toDouble(),
+                              title: 'Diğer\n${_totalCustomers - _activeCustomers - _expiredCustomers}',
+                              titleStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              color: Colors.grey,
+                              radius: 80,
+                            ),
+                          ],
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40, // Orta boşluğu artır
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

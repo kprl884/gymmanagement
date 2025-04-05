@@ -27,6 +27,9 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+# Add this line before the target 'Runner' do block
+$FirebaseSDKVersion = '10.12.0'
+
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
@@ -35,10 +38,26 @@ target 'Runner' do
   target 'RunnerTests' do
     inherit! :search_paths
   end
+
+  pod 'FirebaseCrashlytics'
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # This adds the Crashlytics run script to upload symbols
+    target.build_configurations.each do |config|
+      # ... existing configs
+      
+      # Add Crashlytics Run Script if needed
+      if target.name == 'Runner'
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+          '$(inherited)',
+          'DART_OBFUSCATION=1', # Optional: If you're obfuscating your code
+          'CRASHLYTICS_ENABLED=1'
+        ]
+      end
+    end
   end
 end

@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'crashlytics_service.dart';
 
 class LogService {
   static final LogService _instance = LogService._internal();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final CrashlyticsService _crashlytics = CrashlyticsService();
   bool _hasLogError = false; // Log yazma hatası olup olmadığını takip et
 
   factory LogService() {
@@ -14,17 +16,31 @@ class LogService {
 
   // Bilgi logu
   void logInfo(String tag, String message) {
-    _log('INFO', tag, message, null);
+    final logMessage = '[$tag] INFO: $message';
+    debugPrint(logMessage);
+    _crashlytics.log(logMessage);
   }
 
   // Uyarı logu
   void logWarning(String tag, String message) {
-    _log('WARNING', tag, message, null);
+    final logMessage = '[$tag] WARNING: $message';
+    debugPrint(logMessage);
+    _crashlytics.log(logMessage);
   }
 
   // Hata logu
   void logError(String tag, String message, StackTrace? stackTrace) {
-    _log('ERROR', tag, message, stackTrace);
+    final logMessage = '[$tag] ERROR: $message';
+    debugPrint(logMessage);
+
+    // Record error in Crashlytics
+    final error = Exception('$tag: $message');
+    _crashlytics.recordError(error, stackTrace);
+  }
+
+  // Set current user for better error tracking
+  void setUser(String userId) {
+    _crashlytics.setUserIdentifier(userId);
   }
 
   // Log yazma işlemi

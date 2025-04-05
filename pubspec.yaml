@@ -47,6 +47,9 @@ dependencies:
   
   # SMS sending
   telephony: ^0.2.0
+  
+  # Add Firebase Crashlytics
+  firebase_crashlytics: ^3.3.5
 
 dev_dependencies:
   flutter_test:

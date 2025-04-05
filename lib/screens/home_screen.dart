@@ -120,9 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: Icon(
-                themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+              context.watch<ThemeService>().isDarkMode
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
             onPressed: () {
-              themeService.toggleTheme();
+              context.read<ThemeService>().toggleTheme();
             },
           ),
           IconButton(

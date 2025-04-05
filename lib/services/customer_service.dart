@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer.dart';
+import '../models/customer_data.dart';
 import 'log_service.dart';
 import 'dart:async';
-import '../widgets/monthly_customer_chart.dart';
 
 class CustomerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

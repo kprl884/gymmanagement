@@ -76,19 +76,38 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ThemeService(),
         ),
-        // Diğer provider'ları buraya ekleyebilirsiniz
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Gym Management',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
-        home: const SplashScreen(),
-        routes: {
-          '/dashboard': (context) => DashboardScreen(),
-          '/homeScreen': (context) => const HomeScreen(),
+      child: Consumer<ThemeService>(
+        builder: (context, themeService, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Gym Management',
+            theme: ThemeData(
+              primarySwatch: Colors.blue,
+              brightness: Brightness.light,
+              visualDensity: VisualDensity.adaptivePlatformDensity,
+            ),
+            darkTheme: ThemeData(
+              primarySwatch: Colors.blue,
+              brightness: Brightness.dark,
+              visualDensity: VisualDensity.adaptivePlatformDensity,
+            ),
+            themeMode:
+                themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const SplashScreen(),
+            routes: {
+              '/dashboard': (context) => DashboardScreen(),
+              '/home_screen': (context) => const HomeScreen(),
+            },
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('tr', 'TR'),
+            ],
+          );
         },
       ),
     );

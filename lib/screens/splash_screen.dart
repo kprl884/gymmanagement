@@ -22,12 +22,11 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    // Sadece bir yönlendirme kullanın
+    // Yönlendirmeyi düzelttik
     Future.delayed(const Duration(seconds: 3), () {
       debugPrint('SplashScreen - Yönlendirme başlıyor');
       if (mounted) {
-        // Widget hala aktif mi kontrol et
-        Navigator.pushReplacementNamed(context, '/homeScreen');
+        Navigator.pushReplacementNamed(context, '/home_screen');
       }
     });
   }

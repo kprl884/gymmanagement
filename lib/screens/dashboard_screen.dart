@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/customer_service.dart';
+import '../models/customer_data.dart';
 import '../widgets/monthly_customer_chart.dart';
 
 class DashboardScreen extends StatelessWidget {

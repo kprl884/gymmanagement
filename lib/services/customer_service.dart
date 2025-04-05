@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer.dart';
 import 'log_service.dart';
 import 'dart:async';
+import '../widgets/monthly_customer_chart.dart';
 
 class CustomerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -46,7 +47,8 @@ class CustomerService {
       print("CustomerService: addCustomer başladı");
 
       // Firestore'a ekleme işlemini tamamla ve dönen belge referansını al
-      final docRef = await _firestore.collection('customers').add(customer.toFirestore());
+      final docRef =
+          await _firestore.collection('customers').add(customer.toFirestore());
 
       print("CustomerService: addCustomer başarılı, ID: ${docRef.id}");
 
@@ -188,5 +190,53 @@ class CustomerService {
           'CustomerService', 'Sayfalı müşteri getirme hatası: $e', null);
       rethrow;
     }
+  }
+
+  Future<List<CustomerData>> getMonthlyCustomerData() async {
+    try {
+      // Son 6 ayın verilerini al
+      final DateTime now = DateTime.now();
+      final List<CustomerData> monthlyData = [];
+
+      for (int i = 5; i >= 0; i--) {
+        final DateTime month = DateTime(now.year, now.month - i, 1);
+        final DateTime nextMonth = DateTime(now.year, now.month - i + 1, 1);
+
+        final QuerySnapshot snapshot = await _firestore
+            .collection('customers')
+            .where('createdAt',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(month))
+            .where('createdAt', isLessThan: Timestamp.fromDate(nextMonth))
+            .get();
+
+        monthlyData.add(CustomerData(
+          _getMonthName(month.month),
+          snapshot.docs.length,
+        ));
+      }
+
+      return monthlyData;
+    } catch (e) {
+      print('Error getting monthly customer data: $e');
+      return [];
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Oca',
+      'Şub',
+      'Mar',
+      'Nis',
+      'May',
+      'Haz',
+      'Tem',
+      'Ağu',
+      'Eyl',
+      'Eki',
+      'Kas',
+      'Ara'
+    ];
+    return months[month - 1];
   }
 }

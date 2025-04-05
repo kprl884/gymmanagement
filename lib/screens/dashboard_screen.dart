@@ -1,11 +1,14 @@
-import '../widgets/monthly_customer_chart.dart';
+import 'package:flutter/material.dart';
 import '../services/customer_service.dart';
+import '../widgets/monthly_customer_chart.dart';
 
 class DashboardScreen extends StatelessWidget {
-  final CustomerService _customerService = CustomerService();
+  const DashboardScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final CustomerService _customerService = CustomerService();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
@@ -18,22 +21,26 @@ class DashboardScreen extends StatelessWidget {
               future: _customerService.getMonthlyCustomerData(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
 
                 if (snapshot.hasError) {
-                  return const Center(
-                      child: Text('Veri yüklenirken bir hata oluştu'));
+                  return Center(
+                    child: Text('Hata: ${snapshot.error}'),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('Veri bulunamadı'));
+                  return const Center(
+                    child: Text('Henüz müşteri verisi bulunmuyor'),
+                  );
                 }
 
                 return MonthlyCustomerChart(data: snapshot.data!);
               },
             ),
-            // Diğer widget'lar...
           ],
         ),
       ),

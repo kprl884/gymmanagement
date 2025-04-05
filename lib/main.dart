@@ -16,6 +16,8 @@ import 'services/theme_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/setup_screen.dart';
 import 'services/scheduled_task_service.dart';
+import 'screens/splash_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,12 +63,7 @@ void main() async {
   // Uygulama başladığında anlık kontrol yap
   scheduledTaskService.runImmediateChecks();
 
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => ThemeService(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -74,28 +71,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeService = Provider.of<ThemeService>(context);
-
-    return MaterialApp(
-      title: 'Müşteri Yönetimi',
-      theme: themeService.currentTheme,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => ThemeService(),
+        ),
+        // Diğer provider'ları buraya ekleyebilirsiniz
       ],
-      supportedLocales: const [
-        Locale('tr', 'TR'),
-      ],
-      locale: const Locale('tr', 'TR'),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const AuthWrapper(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/setup': (context) => const SetupScreen(),
-      },
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Gym Management',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: const SplashScreen(),
+        routes: {
+          '/dashboard': (context) => DashboardScreen(),
+          '/homeScreen': (context) => const HomeScreen(),
+        },
+      ),
     );
   }
 }

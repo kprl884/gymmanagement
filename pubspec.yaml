@@ -51,6 +51,9 @@ dependencies:
   # Add Firebase Crashlytics
   firebase_crashlytics: ^3.3.5
 
+  # Added lottie dependency
+  lottie: ^2.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -129,3 +132,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+  assets:
+    - assets/animations/gymanimation.json  # Tam dosya yolunu belirtin

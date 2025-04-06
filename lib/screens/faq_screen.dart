@@ -14,7 +14,7 @@ class _FAQScreenState extends State<FAQScreen> {
     {
       'question': 'Spor salonunda başlamak için ne yapmalıyım?',
       'answer':
-          'İlk olarak üyelik kaydınızı yaptırıp, sağlık durumunuzu değerlendirmek için form doldurmanız gerekiyor. Ardından size uygun bir program belirlenecek.',
+          'deneme 1 İlk olarak üyelik kaydınızı yaptırıp, sağlık durumunuzu değerlendirmek için form doldurmanız gerekiyor. Ardından size uygun bir program belirlenecek.',
     },
     {
       'question': 'Hangi sıklıkta antrenman yapmalıyım?',

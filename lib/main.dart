@@ -18,6 +18,7 @@ import 'screens/setup_screen.dart';
 import 'services/scheduled_task_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'utils/navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +81,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
           return MaterialApp(
+            navigatorKey: navigatorKey,
             debugShowCheckedModeBanner: false,
             title: 'Gym Management',
             theme: ThemeData(
@@ -97,6 +99,7 @@ class MyApp extends StatelessWidget {
             home: const SplashScreen(),
             routes: {
               '/dashboard': (context) => DashboardScreen(),
+              '/login': (context) => LoginScreen(),
               '/home_screen': (context) => const HomeScreen(),
             },
             localizationsDelegates: const [

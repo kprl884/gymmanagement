@@ -1,10 +1,11 @@
+import 'dart:async'; // TimeoutException için import
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:async'; // TimeoutException için
 import 'log_service.dart'; // LogService import
+import '../utils/navigation.dart'; // navigatorKey için import
 
 class UserService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -141,10 +142,49 @@ class UserService {
 
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
+      _logService.logInfo('UserService', 'Çıkış işlemi başlatılıyor');
+
+      if (kIsWeb) {
+        // Web platformunda daha güvenli çıkış işlemi
+        try {
+          await _auth.signOut();
+          _logService.logInfo('UserService', 'Web platformunda çıkış yapıldı');
+        } catch (e) {
+          _logService.logError('UserService', 'Web çıkış hatası: $e', null);
+          // Web'de çıkış hatası olsa bile devam et
+        }
+      } else {
+        // Mobil platformda çıkış işlemi
+        await _auth.signOut();
+        _logService.logInfo('UserService', 'Mobil platformda çıkış yapıldı');
+      }
+
+      // Navigasyon işlemi
+      _logService.logInfo('UserService', 'Login sayfasına yönlendiriliyor');
+      if (navigatorKey.currentState != null) {
+        navigatorKey.currentState!.pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      } else {
+        _logService.logError(
+            'UserService', 'navigatorKey.currentState null', null);
+      }
     } catch (e) {
-      _logService.logError('UserService', 'Çıkış hatası: $e', null);
-      rethrow;
+      _logService.logError('UserService', 'Çıkış işlemi genel hata: $e', null);
+
+      // Hata olsa bile yönlendirme yapmaya çalış
+      try {
+        if (navigatorKey.currentState != null) {
+          navigatorKey.currentState!.pushNamedAndRemoveUntil(
+            '/login',
+            (route) => false,
+          );
+        }
+      } catch (navError) {
+        _logService.logError(
+            'UserService', 'Navigasyon hatası: $navError', null);
+      }
     }
   }
 

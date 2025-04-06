@@ -4,11 +4,12 @@ import '../models/user.dart';
 import '../services/user_service.dart';
 import '../services/theme_service.dart';
 import 'customer_list_screen.dart';
-import 'equipment_list_screen.dart';
+import 'faq_screen.dart';
 import 'fitness_plan_list_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'admin/user_management_screen.dart';
+import 'fitness_plan_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -33,9 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Normal kullanıcı için ekranlar
   final List<Widget> userScreens = [
-    const EquipmentListScreen(), // Ekipmanlar
-    const FitnessPlanListScreen(), // Fitness Planları
-    const SettingsScreen(), // Ayarlar
+    FAQScreen(), // FAQScreen widget'ı
+    const FitnessPlanListScreen(),
+    const SettingsScreen(),
   ];
 
   // Admin için navigasyon öğeleri
@@ -61,8 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Normal kullanıcı için navigasyon öğeleri
   final List<BottomNavigationBarItem> userNavItems = [
     const BottomNavigationBarItem(
-      icon: Icon(Icons.fitness_center),
-      label: 'Ekipmanlar',
+      icon: Icon(Icons.question_answer), // FAQ ikonu
+      label: 'Sık Sorulanlar',
     ),
     const BottomNavigationBarItem(
       icon: Icon(Icons.directions_run),

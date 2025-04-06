@@ -54,6 +54,9 @@ dependencies:
   # Added lottie dependency
   lottie: ^2.7.0
 
+  # Added font_awesome_flutter dependency
+  font_awesome_flutter: ^10.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

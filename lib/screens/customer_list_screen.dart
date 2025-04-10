@@ -489,10 +489,12 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       email: 'test@example.com',
       age: 30,
       registrationDate: DateTime.now(),
-      subscriptionMonths: 3,
+      subscriptionMonths: 1,
       paymentType: PaymentType.cash,
-      paidMonths: [],
+      paidMonths: [DateTime.now()],
       status: MembershipStatus.active,
+      customerType: CustomerType.civilian,
+      monthlyFee: 800.0,
     );
 
     await _customerService.addCustomer(customer);

@@ -4,6 +4,8 @@ enum MembershipStatus { active, expired, pending, cancelled }
 
 enum PaymentType { cash, installment }
 
+enum CustomerType { civilian, student }
+
 class Customer {
   final String? id;
   final String name;
@@ -23,6 +25,8 @@ class Customer {
   final List<String>? assignedPlans;
   final Map<String, dynamic>? measurements;
   final String? assignedTrainer;
+  final CustomerType customerType; // Müşteri tipi (sivil/öğrenci)
+  final double monthlyFee; // Aylık ücret
 
   Customer({
     this.id,
@@ -43,6 +47,8 @@ class Customer {
     this.assignedPlans,
     this.measurements,
     this.assignedTrainer,
+    required this.customerType,
+    required this.monthlyFee,
   });
 
   // Firestore'dan Customer oluştur
@@ -85,15 +91,16 @@ class Customer {
           : null,
       measurements: data['measurements'],
       assignedTrainer: data['assignedTrainer'],
+      customerType: CustomerType.values.firstWhere(
+        (e) => e.toString().split('.').last == data['customerType'],
+        orElse: () => CustomerType.civilian,
+      ),
+      monthlyFee: (data['monthlyFee'] ?? 800.0).toDouble(),
     );
   }
 
   // Customer'ı Firestore formatına dönüştür
   Map<String, dynamic> toFirestore() {
-    // Ödenen ayları Timestamp'e dönüştür
-    List<Timestamp> paidMonthsTimestamps =
-        paidMonths.map((date) => Timestamp.fromDate(date)).toList();
-
     return {
       'name': name,
       'surname': surname,
@@ -106,7 +113,7 @@ class Customer {
       'subscriptionMonths': subscriptionMonths,
       'paymentType':
           paymentType == PaymentType.installment ? 'installment' : 'cash',
-      'paidMonths': paidMonthsTimestamps,
+      'paidMonths': paidMonths.map((date) => Timestamp.fromDate(date)).toList(),
       'isActive': isActive,
       'status': status.toString().split('.').last,
       'notes': notes,
@@ -114,12 +121,14 @@ class Customer {
       'assignedPlans': assignedPlans,
       'measurements': measurements,
       'assignedTrainer': assignedTrainer,
-      'lastUpdated': FieldValue.serverTimestamp(),
+      'customerType': customerType.toString().split('.').last,
+      'monthlyFee': monthlyFee,
     };
   }
 
-  // Müşteri bilgilerini güncelleme
+  // Customer'ı kopyala ve güncelle
   Customer copyWith({
+    String? id,
     String? name,
     String? surname,
     String? phone,
@@ -137,6 +146,8 @@ class Customer {
     List<String>? assignedPlans,
     Map<String, dynamic>? measurements,
     String? assignedTrainer,
+    CustomerType? customerType,
+    double? monthlyFee,
   }) {
     return Customer(
       id: id,
@@ -157,6 +168,8 @@ class Customer {
       assignedPlans: assignedPlans ?? this.assignedPlans,
       measurements: measurements ?? this.measurements,
       assignedTrainer: assignedTrainer ?? this.assignedTrainer,
+      customerType: customerType ?? this.customerType,
+      monthlyFee: monthlyFee ?? this.monthlyFee,
     );
   }
 }

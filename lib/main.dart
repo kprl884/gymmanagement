@@ -19,6 +19,10 @@ import 'services/scheduled_task_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'utils/navigation.dart';
+import 'services/session_timeout_service.dart';
+import 'widgets/activity_detector.dart';
+import 'utils/activity_route_observer.dart';
+import 'widgets/auth_guard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,11 +68,23 @@ void main() async {
   // Uygulama başladığında anlık kontrol yap
   scheduledTaskService.runImmediateChecks();
 
-  runApp(const MyApp());
+  // Oturum zaman aşımı servisini başlat
+  final sessionTimeoutService = SessionTimeoutService();
+  await sessionTimeoutService.init();
+
+  // Route observer'ı oluştur
+  final routeObserver = ActivityRouteObserver(sessionTimeoutService);
+
+  runApp(MyApp(routeObserver: routeObserver));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final RouteObserver<ModalRoute<dynamic>> routeObserver;
+
+  const MyApp({
+    Key? key,
+    required this.routeObserver,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -80,36 +96,43 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
-          return MaterialApp(
-            navigatorKey: navigatorKey,
-            debugShowCheckedModeBanner: false,
-            title: 'Gym Management',
-            theme: ThemeData(
-              primarySwatch: Colors.blue,
-              brightness: Brightness.light,
-              visualDensity: VisualDensity.adaptivePlatformDensity,
+          return ActivityDetector(
+            child: MaterialApp(
+              navigatorKey: navigatorKey,
+              navigatorObservers: [routeObserver],
+              debugShowCheckedModeBanner: false,
+              title: 'Gym Management',
+              theme: ThemeData(
+                primarySwatch: Colors.blue,
+                brightness: Brightness.light,
+                visualDensity: VisualDensity.adaptivePlatformDensity,
+              ),
+              darkTheme: ThemeData(
+                primarySwatch: Colors.blue,
+                brightness: Brightness.dark,
+                visualDensity: VisualDensity.adaptivePlatformDensity,
+              ),
+              themeMode:
+                  themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+              home: const SplashScreen(),
+              routes: {
+                '/dashboard': (context) => AuthGuard(child: DashboardScreen()),
+                '/login': (context) => AuthGuard(
+                      child: LoginScreen(),
+                      requireAuth: false,
+                    ),
+                '/home_screen': (context) =>
+                    AuthGuard(child: const HomeScreen()),
+              },
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const [
+                Locale('tr', 'TR'),
+              ],
             ),
-            darkTheme: ThemeData(
-              primarySwatch: Colors.blue,
-              brightness: Brightness.dark,
-              visualDensity: VisualDensity.adaptivePlatformDensity,
-            ),
-            themeMode:
-                themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const SplashScreen(),
-            routes: {
-              '/dashboard': (context) => DashboardScreen(),
-              '/login': (context) => LoginScreen(),
-              '/home_screen': (context) => const HomeScreen(),
-            },
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale('tr', 'TR'),
-            ],
           );
         },
       ),

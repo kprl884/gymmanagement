@@ -49,7 +49,7 @@ class UserService {
             // Admin e-posta listesi
             final List<String> adminEmails = [
               'admin@hotmail.com',
-              'admin@example.com'
+              'admin_alfa@example.com'
             ];
 
             // E-posta admin listesinde mi kontrol et (küçük harfe çevirerek)

@@ -81,13 +81,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   void _calculateTotalRevenue() async {
     try {
       final customers = await _customerService.getAllCustomers();
-      final monthlyFee = 200; // Aylık ücret (örnek değer)
 
       setState(() {
         _totalRevenue = 0;
         for (var customer in customers) {
           // Abonelik süresine göre geliri hesapla
-          _totalRevenue += customer.subscriptionMonths * monthlyFee;
+          _totalRevenue += customer.subscriptionMonths * customer.monthlyFee;
         }
       });
     } catch (e) {
@@ -117,7 +116,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           1,
         );
         final monthKey =
-        DateFormat('MMMM yyyy', 'tr_TR').format(registrationMonth);
+            DateFormat('MMMM yyyy', 'tr_TR').format(registrationMonth);
 
         if (monthlyData.containsKey(monthKey)) {
           monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + 1;
@@ -173,145 +172,148 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Genel bakış kartı
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Genel Bakış',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Genel bakış kartı
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Genel Bakış',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(),
+                          _buildStatRow(
+                              'Toplam Müşteri', _totalCustomers.toString()),
+                          _buildStatRow(
+                              'Aktif Üyelikler', _activeCustomers.toString()),
+                          _buildStatRow('Süresi Dolmuş Üyelikler',
+                              _expiredCustomers.toString()),
+                          _buildStatRow('Bu Ay Yeni Kayıtlar',
+                              _newCustomersThisMonth.toString()),
+                          _buildStatRow(
+                            'Toplam Gelir',
+                            NumberFormat.currency(locale: 'tr_TR', symbol: '₺')
+                                .format(_totalRevenue),
+                          ),
+                        ],
                       ),
                     ),
-                    const Divider(),
-                    _buildStatRow(
-                        'Toplam Müşteri', _totalCustomers.toString()),
-                    _buildStatRow(
-                        'Aktif Üyelikler', _activeCustomers.toString()),
-                    _buildStatRow('Süresi Dolmuş Üyelikler',
-                        _expiredCustomers.toString()),
-                    _buildStatRow('Bu Ay Yeni Kayıtlar',
-                        _newCustomersThisMonth.toString()),
-                    _buildStatRow(
-                      'Toplam Gelir',
-                      NumberFormat.currency(locale: 'tr_TR', symbol: '₺')
-                          .format(_totalRevenue),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Aylık müşteri dağılımı kartı
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Aylık Müşteri Dağılımı',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(),
+                          ..._monthlyCustomers.entries
+                              .toList()
+                              .reversed // En son aydan başla
+                              .map((entry) => _buildStatRow(
+                                  entry.key, entry.value.toString()))
+                              .toList(),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Üyelik Durumu Pasta Grafiği
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Üyelik Durumu',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 250, // Yüksekliği artır
+                            child: _totalCustomers == 0
+                                ? const Center(child: Text('Veri yok'))
+                                : PieChart(
+                                    PieChartData(
+                                      sections: [
+                                        PieChartSectionData(
+                                          value: _activeCustomers.toDouble(),
+                                          title: 'Aktif\n${_activeCustomers}',
+                                          titleStyle: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          color: Colors.green,
+                                          radius: 80,
+                                        ),
+                                        PieChartSectionData(
+                                          value: _expiredCustomers.toDouble(),
+                                          title:
+                                              'Sona\nEren\n${_expiredCustomers}',
+                                          titleStyle: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          color: Colors.red,
+                                          radius: 80,
+                                        ),
+                                        PieChartSectionData(
+                                          value: (_totalCustomers -
+                                                  _activeCustomers -
+                                                  _expiredCustomers)
+                                              .toDouble(),
+                                          title:
+                                              'Diğer\n${_totalCustomers - _activeCustomers - _expiredCustomers}',
+                                          titleStyle: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          color: Colors.grey,
+                                          radius: 80,
+                                        ),
+                                      ],
+                                      sectionsSpace: 2,
+                                      centerSpaceRadius:
+                                          40, // Orta boşluğu artır
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Aylık müşteri dağılımı kartı
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Aylık Müşteri Dağılımı',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Divider(),
-                    ..._monthlyCustomers.entries
-                        .toList()
-                        .reversed // En son aydan başla
-                        .map((entry) => _buildStatRow(
-                        entry.key, entry.value.toString()))
-                        .toList(),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Üyelik Durumu Pasta Grafiği
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Üyelik Durumu',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 250, // Yüksekliği artır
-                      child: _totalCustomers == 0
-                          ? const Center(child: Text('Veri yok'))
-                          : PieChart(
-                        PieChartData(
-                          sections: [
-                            PieChartSectionData(
-                              value: _activeCustomers.toDouble(),
-                              title: 'Aktif\n${_activeCustomers}',
-                              titleStyle: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              color: Colors.green,
-                              radius: 80,
-                            ),
-                            PieChartSectionData(
-                              value: _expiredCustomers.toDouble(),
-                              title: 'Sona\nEren\n${_expiredCustomers}',
-                              titleStyle: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              color: Colors.red,
-                              radius: 80,
-                            ),
-                            PieChartSectionData(
-                              value: (_totalCustomers -
-                                  _activeCustomers -
-                                  _expiredCustomers)
-                                  .toDouble(),
-                              title: 'Diğer\n${_totalCustomers - _activeCustomers - _expiredCustomers}',
-                              titleStyle: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              color: Colors.grey,
-                              radius: 80,
-                            ),
-                          ],
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40, // Orta boşluğu artır
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

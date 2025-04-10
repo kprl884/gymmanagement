@@ -483,6 +483,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           assignedPlans: _customer.assignedPlans,
           measurements: _customer.measurements,
           assignedTrainer: _customer.assignedTrainer,
+          customerType: _customer.customerType,
+          monthlyFee: _customer.monthlyFee,
         );
 
         await _customerService.updateCustomer(updatedCustomer);

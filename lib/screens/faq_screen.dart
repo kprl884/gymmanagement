@@ -14,10 +14,10 @@ class _FAQScreenState extends State<FAQScreen> {
     {
       'question': 'Spor salonunda başlamak için ne yapmalıyım?',
       'answer':
-          'deneme 1 İlk olarak üyelik kaydınızı yaptırıp, sağlık durumunuzu değerlendirmek için form doldurmanız gerekiyor. Ardından size uygun bir program belirlenecek.',
+          'deneme 3 İlk olarak üyelik kaydınızı yaptırıp, sağlık durumunuzu değerlendirmek için form doldurmanız gerekiyor. Ardından size uygun bir program belirlenecek.',
     },
     {
-      'question': 'Hangi sıklıkta antrenman yapmalıyım?',
+      'questio3n': 'Hangi sıklıkta antrenman yapmalıyım?',
       'answer':
           'Başlangıçta haftada 3-4 gün antrenman yapmanız önerilir. Vücudunuzun adaptasyonuna göre bu süre artırılabilir.',
     },

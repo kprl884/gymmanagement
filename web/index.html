@@ -38,6 +38,22 @@
     </script>
     <!-- This script adds the flutter initialization JS code -->
     <script src="flutter.js" defer></script>
+
+    <!-- localStorage JavaScript interop -->
+    <script>
+      // Web Storage JavaScript fonksiyonları
+      function setLocalStorageItem(key, value) {
+        window.localStorage.setItem(key, value);
+      }
+      
+      function getLocalStorageItem(key) {
+        return window.localStorage.getItem(key);
+      }
+      
+      function removeLocalStorageItem(key) {
+        window.localStorage.removeItem(key);
+      }
+    </script>
 </head>
 <body>
 <script>

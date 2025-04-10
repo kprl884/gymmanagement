@@ -21,9 +21,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _emailController = TextEditingController();
   final _ageController = TextEditingController();
   final _notesController = TextEditingController();
+  final _monthlyFeeController = TextEditingController();
 
   // Dropdown için değişkenler
   int _selectedSubscriptionMonths = 1;
+  CustomerType _selectedCustomerType = CustomerType.civilian;
 
   // Dropdown için seçenekler
   final List<int> _subscriptionOptions =
@@ -40,6 +42,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   void initState() {
     super.initState();
     _updatePaidMonthsChecklist();
+    _updateMonthlyFee();
   }
 
   void _updatePaidMonthsChecklist() {
@@ -47,6 +50,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       // Abonelik süresine göre ödenen aylar listesini güncelle
       _paidMonthsChecklist =
           List.generate(_selectedSubscriptionMonths, (index) => false);
+    });
+  }
+
+  void _updateMonthlyFee() {
+    setState(() {
+      // Müşteri tipine göre aylık ücreti güncelle
+      _monthlyFeeController.text =
+          _selectedCustomerType == CustomerType.student ? '700' : '800';
     });
   }
 
@@ -58,6 +69,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _emailController.dispose();
     _ageController.dispose();
     _notesController.dispose();
+    _monthlyFeeController.dispose();
     super.dispose();
   }
 
@@ -68,14 +80,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       });
 
       try {
-        // Adımı işaretleyelim
-        print("Müşteri kaydı başlıyor");
-
         // Kayıt tarihini al
         final registrationDate = DateTime.now();
-
-        // Adımı işaretleyelim
-        print("Ödenen aylar hesaplanıyor");
 
         // Ödenen ayları hesapla
         List<DateTime> paidMonths = [];
@@ -105,9 +111,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           }
         }
 
-        // Adımı işaretleyelim
-        print("Müşteri nesnesi oluşturuluyor");
-
         final customer = Customer(
           name: _nameController.text,
           surname: _surnameController.text,
@@ -120,39 +123,21 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           paidMonths: paidMonths,
           status: MembershipStatus.active,
           notes: _notesController.text.isEmpty ? null : _notesController.text,
+          customerType: _selectedCustomerType,
+          monthlyFee: double.parse(_monthlyFeeController.text),
         );
 
-        // Adımı işaretleyelim
-        print("Firestore'a yazma başlıyor");
+        await _customerService.addCustomer(customer);
 
-        // Yazma işlemini await ile bekletelim ve bir try-catch içine alalım
-        try {
-          await _customerService.addCustomer(customer);
-          print("Firestore'a yazma tamamlandı");
-        } catch (firebaseError) {
-          print("Firestore yazma hatası: $firebaseError");
-          throw firebaseError; // Hatayı yukarıya gönder
-        }
-
-        // Başarılı olduğunu gösterelim
-        print("İşlem başarılı, pop yapılıyor");
-
-        // mounted kontrolünden sonra
         if (mounted) {
-          // İşlem başarılı olduğunda loading durumunu kapat
           setState(() {
             _isLoading = false;
           });
 
-          // Başarı mesajını göster
           ToastHelper.showSuccessToast(context, 'Müşteri başarıyla eklendi');
-
-          // Önceki sayfaya dön ve başarılı olduğunu bildir
           Navigator.pop(context, true);
         }
       } catch (e) {
-        print("Genel hata: $e");
-
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -313,6 +298,63 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                             ),
                             const Divider(),
 
+                            // Müşteri Tipi Seçimi
+                            DropdownButtonFormField<CustomerType>(
+                              decoration: const InputDecoration(
+                                labelText: 'Müşteri Tipi',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person),
+                              ),
+                              value: _selectedCustomerType,
+                              items:
+                                  CustomerType.values.map((CustomerType type) {
+                                return DropdownMenuItem<CustomerType>(
+                                  value: type,
+                                  child: Text(
+                                    type == CustomerType.student
+                                        ? 'Öğrenci'
+                                        : 'Sivil',
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (CustomerType? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _selectedCustomerType = newValue;
+                                    _updateMonthlyFee();
+                                  });
+                                }
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Aylık Ücret
+                            TextFormField(
+                              controller: _monthlyFeeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Aylık Ücret (TL)',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.attach_money),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Lütfen aylık ücret girin';
+                                }
+                                final fee = double.tryParse(value);
+                                if (fee == null || fee <= 0) {
+                                  return 'Geçerli bir ücret girin';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
                             // Abonelik Süresi Dropdown
                             DropdownButtonFormField<int>(
                               decoration: const InputDecoration(
@@ -340,43 +382,32 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                             const SizedBox(height: 16),
 
                             // Ödeme Tipi Seçimi
-                            const Text(
-                              'Ödeme Tipi',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            DropdownButtonFormField<PaymentType>(
+                              decoration: const InputDecoration(
+                                labelText: 'Ödeme Tipi',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.payment),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<PaymentType>(
-                                    title: const Text('Peşin'),
-                                    value: PaymentType.cash,
-                                    groupValue: _paymentType,
-                                    onChanged: (PaymentType? value) {
-                                      setState(() {
-                                        _paymentType = value!;
-                                      });
-                                    },
+                              value: _paymentType,
+                              items: PaymentType.values.map((PaymentType type) {
+                                return DropdownMenuItem<PaymentType>(
+                                  value: type,
+                                  child: Text(
+                                    type == PaymentType.cash
+                                        ? 'Peşin'
+                                        : 'Taksitli',
                                   ),
-                                ),
-                                Expanded(
-                                  child: RadioListTile<PaymentType>(
-                                    title: const Text('Taksitli'),
-                                    value: PaymentType.installment,
-                                    groupValue: _paymentType,
-                                    onChanged: (PaymentType? value) {
-                                      setState(() {
-                                        _paymentType = value!;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ],
+                                );
+                              }).toList(),
+                              onChanged: (PaymentType? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _paymentType = newValue;
+                                  });
+                                }
+                              },
                             ),
 
-                            // Ödenen Aylar (Sadece taksitli ödemede göster)
                             if (_paymentType == PaymentType.installment) ...[
                               const SizedBox(height: 16),
                               const Text(
@@ -387,33 +418,23 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-
-                              // Ay kutucukları
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: List.generate(
-                                    _paidMonthsChecklist.length, (index) {
-                                  // Kayıt tarihinden itibaren ayları hesapla
-                                  final now = DateTime.now();
-                                  final month =
-                                      DateTime(now.year, now.month + index, 1);
-                                  final monthName =
-                                      DateFormat('MMMM yyyy', 'tr_TR')
-                                          .format(month);
-
-                                  return FilterChip(
-                                    label: Text(monthName),
-                                    selected: _paidMonthsChecklist[index],
-                                    onSelected: (bool selected) {
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _paidMonthsChecklist.length,
+                                itemBuilder: (context, index) {
+                                  return CheckboxListTile(
+                                    title: Text(
+                                      '${index + 1}. Ay (${DateFormat('MMMM yyyy', 'tr_TR').format(DateTime(DateTime.now().year, DateTime.now().month + index))})',
+                                    ),
+                                    value: _paidMonthsChecklist[index],
+                                    onChanged: (bool? value) {
                                       setState(() {
-                                        _paidMonthsChecklist[index] = selected;
+                                        _paidMonthsChecklist[index] = value!;
                                       });
                                     },
-                                    selectedColor: Colors.green[100],
-                                    checkmarkColor: Colors.green,
                                   );
-                                }),
+                                },
                               ),
                             ],
                           ],
